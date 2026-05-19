@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Text.Json;
+using System.Net.Http;
+using System.Text;
 
 class SessionEvent
 {
@@ -34,6 +37,8 @@ class Program
 
     [DllImport("user32.dll")]
     static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    static HttpClient httpClient = new HttpClient();
 
     static string GetActiveProcessName()
     {
@@ -98,6 +103,7 @@ class Program
         }
 
         Console.WriteLine("Tracker stopped.");
+        SendBatchToServer(batch).Wait();
         Console.WriteLine(Directory.GetCurrentDirectory());
 
         File.WriteAllText(
@@ -107,6 +113,8 @@ class Program
                 WriteIndented = true
             })
         );
+
+        
     }
 
     static string Batch_id = Guid.NewGuid().ToString();
@@ -148,5 +156,37 @@ class Program
 
             _ => "unknown"
         };
+    }
+
+    static async Task SendBatchToServer(List<SessionEvent> batch)
+    {
+        Console.WriteLine("Sending batch to server...");
+
+        try
+        {
+            string json = JsonSerializer.Serialize(batch);
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            Console.WriteLine($"POST http://localhost:3000/sessions/batch");
+
+            var response = await httpClient.PostAsync(
+                "http://localhost:3000/sessions/batch",
+                content
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Batch successfully sent to server.");
+            }
+            else
+            {
+                Console.WriteLine($"Server error: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send batch: {ex.Message}");
+        }
     }
 }
