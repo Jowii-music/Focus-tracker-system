@@ -1,2 +1,152 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿using System;
+using System.Threading;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Text.Json;
+
+class SessionEvent
+{
+    public string BatchId { get; set; }
+    public int UserId { get; set; }
+    public string Source { get; set; } = "console";
+    public string AppName { get; set; }
+
+    public string SiteUrl { get; set; }
+    public string WindowTitle { get; set; }
+
+    public string Category { get; set; }
+
+    public DateTime StartedAt { get; set; }
+    public DateTime EndedAt { get; set; }
+    public long DurationSeconds { get; set; }
+
+    public bool Processed { get; set; }
+
+    public DateTime ActivityDate { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+class Program
+{
+    [DllImport("user32.dll")]
+    static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    static string GetActiveProcessName()
+    {
+        IntPtr hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero)
+            return null;
+
+        uint pid;
+        GetWindowThreadProcessId(hwnd, out pid);
+
+        try
+        {
+            Process p = Process.GetProcessById((int)pid);
+            return p.ProcessName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    static string lastProcess = null;
+    static DateTime sessionStartTime;
+
+    static bool isRunning = true;
+
+    static List<SessionEvent> batch = new List<SessionEvent>();
+
+    static void Main(string[] args)
+    {
+        Thread stopThread = new Thread(() =>
+        {
+            Console.ReadLine();
+            isRunning = false;
+        });
+
+        stopThread.Start();
+
+        while (isRunning)
+        {
+            string activeProcess = GetActiveProcessName();
+
+            if (activeProcess != lastProcess)
+            {
+                if (lastProcess != null)
+                {
+                    DateTime endTime = DateTime.Now;
+
+                    var session = CreateSessionEvent(lastProcess, sessionStartTime, endTime);
+                    batch.Add(session);
+
+                    Console.WriteLine(
+                        $"EVENT | {session.AppName} | {session.StartedAt:HH:mm:ss} → {session.EndedAt:HH:mm:ss} | {session.DurationSeconds}s | {session.Category}"
+                    );
+                }
+
+                lastProcess = activeProcess;
+                sessionStartTime = DateTime.Now;
+            }
+
+            Thread.Sleep(1000);
+        }
+
+        Console.WriteLine("Tracker stopped.");
+        Console.WriteLine(Directory.GetCurrentDirectory());
+
+        File.WriteAllText(
+            "sessions.json",
+            System.Text.Json.JsonSerializer.Serialize(batch, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            })
+        );
+    }
+
+    static string Batch_id = Guid.NewGuid().ToString();
+
+    static SessionEvent CreateSessionEvent(string appName, DateTime start, DateTime end)
+    {
+        return new SessionEvent
+        {
+            BatchId = Batch_id,
+            UserId = 1,
+
+            AppName = appName,
+
+            Category = GetCategory(appName),
+
+            StartedAt = start,
+            EndedAt = end,
+            DurationSeconds = (long)(end - start).TotalSeconds,
+
+            ActivityDate = start.Date,
+            CreatedAt = DateTime.Now
+        };
+    }
+
+    static string GetCategory(string app)
+    {
+        return app switch
+        {
+            "Code" => "productive",
+            "WindowsTerminal" => "productive",
+            "devenv" => "productive",
+
+            "chrome" => "distracted",
+            "msedge" => "distracted",
+            "firefox" => "distracted",
+
+            "Discord" => "distracted",
+            "WhatsApp" => "distracted",
+
+            _ => "unknown"
+        };
+    }
+}
