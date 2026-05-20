@@ -1,21 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Focus Tracker",
+  "name": "Session Tracker",
   "version": "1.0",
-  "description": "Tracks time spent per website/tab",
-
-  "permissions": [
-    "storage",
-    "tabs",
-    "activeTab",
-    "alarms"
-  ],
-
-  "host_permissions": [
-    "<all_urls>"
-  ],
-
+  "permissions": ["tabs", "storage"],
   "background": {
-    "service_worker": "background.js"
+  "service_worker": "background.js"
   }
 }

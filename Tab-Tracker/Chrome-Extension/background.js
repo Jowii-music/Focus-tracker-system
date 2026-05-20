@@ -1,53 +1,94 @@
-import { saveSession } from './storage.js';
+console.log("Extension loaded");
 
-let currentTab = null;
-let startTime = null;
+let currentSession = null;
 
-// helper: pak domein naam als "naam"
-function getSiteName(url) {
-  try {
-    const u = new URL(url);
-    return u.hostname.replace("www.", "");
-  } catch (e) {
-    return "unknown";
-  }
+function formatDate(d) {
+  return d.toISOString().split("T")[0];
 }
 
-// tab switch detectie
+function formatTime(d) {
+  return d.toTimeString().split(" ")[0];
+}
+
+function getCategory(url) {
+  if (!url) return "unknown";
+  if (url.includes("github") || url.includes("code")) return "productive";
+  return "unknown";
+}
+
+function saveSession(session) {
+  const date = session.date;
+
+  chrome.storage.local.get({ sessionsByDate: {} }, (data) => {
+    const all = data.sessionsByDate;
+
+    if (!all[date]) {
+      all[date] = {
+        date,
+        sessions: []
+      };
+    }
+
+    all[date].sessions.push(session);
+
+    chrome.storage.local.set({ sessionsByDate: all }, () => {
+      console.log("SESSION SAVED:", session);
+      console.log("ALL DATA:", all);
+    });
+  });
+}
+
+async function endCurrentSession() {
+  if (!currentSession) return;
+
+  console.log("ENDING SESSION...");
+
+  const end = new Date();
+
+  const session = {
+    app: currentSession.app,
+    category: currentSession.category,
+    startTime: formatTime(currentSession.start),
+    endTime: formatTime(end),
+    durationSeconds: Math.round((end - currentSession.start) / 1000),
+    date: formatDate(currentSession.start)
+  };
+
+  saveSession(session);
+}
+
+function startSession(tab) {
+  currentSession = {
+    app: tab.title || tab.url,
+    category: getCategory(tab.url),
+    start: new Date()
+  };
+
+  console.log("NEW SESSION STARTED:", currentSession);
+}
+
+// TAB SWITCH
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const tab = await chrome.tabs.get(activeInfo.tabId);
 
-  handleTabChange(tab);
+  await endCurrentSession();
+  startSession(tab);
 });
 
-// URL change in zelfde tab
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+// TAB UPDATED
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
-    handleTabChange(tab);
+    const active = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (active[0]?.id === tabId) {
+      await endCurrentSession();
+      startSession(tab);
+    }
   }
 });
 
-function handleTabChange(tab) {
-  if (!tab.url) return;
-
-  const now = Date.now();
-
-  // oude sessie afsluiten
-  if (currentTab && startTime) {
-    const duration = now - startTime;
-
-    saveSession({
-      name: getSiteName(currentTab.url),
-      url: currentTab.url,
-      start: startTime,
-      end: now,
-      duration: duration
-    });
-  }
-
-  // nieuwe sessie starten
-  currentTab = tab;
-  startTime = now;
-
-  console.log("Tracking:", getSiteName(tab.url));
-}
+// INIT SESSION
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const tab = tabs[0];
+  startSession(tab);
+});
