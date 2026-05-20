@@ -7,6 +7,9 @@ using System.IO;
 using System.Text.Json;
 using System.Net.Http;
 using System.Text;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using System.Drawing;
 
 class SessionEvent
 {
@@ -16,7 +19,7 @@ class SessionEvent
     public string AppName { get; set; }
 
     public string SiteUrl { get; set; }
-    public string WindowTitle { get; set; }
+    public string SiteTitle { get; set; }
 
     public string Category { get; set; }
 
@@ -161,6 +164,7 @@ class Program
     static async Task SendBatchToServer(List<SessionEvent> batch)
     {
         Console.WriteLine("Sending batch to server...");
+        string batchCount = batch.Count.ToString();
 
         try
         {
@@ -177,7 +181,14 @@ class Program
 
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine("Batch successfully sent to server.");
+                //Console.WriteLine("Batch successfully sent to server.");
+                InitNotify();
+                notify.ShowBalloonTip(
+                    3000,
+                    "batch delivered",
+                    "Your session batch has been successfully delivered to the server.",
+                    ToolTipIcon.Info
+                    );
             }
             else
             {
@@ -188,5 +199,16 @@ class Program
         {
             Console.WriteLine($"Failed to send batch: {ex.Message}");
         }
+    }
+
+    static NotifyIcon notify;
+    static void InitNotify()
+    {
+        notify = new NotifyIcon
+        {
+            Icon= SystemIcons.Application,
+            Visible = true,
+            Text = "Batch has been deliverd!"
+        };
     }
 }
