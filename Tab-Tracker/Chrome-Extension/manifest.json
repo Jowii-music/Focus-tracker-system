@@ -2,8 +2,13 @@
   "manifest_version": 3,
   "name": "Session Tracker",
   "version": "1.0",
+  "description": "Bijhouden of je productief of afgeleid bent per websitebezoek.",
   "permissions": ["tabs", "storage"],
   "background": {
-  "service_worker": "background.js"
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Session Tracker"
   }
 }
