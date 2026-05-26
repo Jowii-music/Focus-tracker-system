@@ -7,6 +7,7 @@ app.use(express.json());
 const PORT = 3000;
 
 const { insertActivityBatch } = require("./services/activityService");
+const { insertReport } = require("./services/reportService")
 
 // test route
 app.get("/", (req, res) => {
@@ -18,12 +19,16 @@ app.post("/sessions/batch", async (req, res) => {
     
     try{
         const batch = req.body;
+        const batch_id = batch[0].BatchId;
         const inserted = await insertActivityBatch(batch)
 
         res.json({
             status: "OK",
             inserted
         })
+
+        generateReport(batch_id);
+
     }
     catch(err){
         console.error(err);
@@ -41,9 +46,104 @@ async function testDb() {
         console.error("db connection failed:", err)
     }
     
+};
+
+async function generateReport(batch_id) {
+    const [rows] = await db.query(
+       `SELECT * FROM activity_logs WHERE batch_id = "${batch_id}"`
+    );
+
+    if (!rows.length) {
+        throw new Error("No activity found for batch");
+    }
+
+    const summary = {
+        total: 0,
+
+        category: {
+            productive: 0,
+            distracted: 0,
+            neutral: 0,
+            unknown: 0
+        },
+
+        apps: {},
+        sites: {},
+        hourly: {},
+        focus_switches: 0
+    };
+
+    let lastApp = null;
+
+    for (const row of rows) {
+        const app = row.app_name;
+        const site = row.site_url;
+        const duration = row.duration_seconds || 0;
+        const category = row.category || "unknown";
+
+        const hour = new Date(row.started_at).getHours();
+
+        const date = new Date(row.started_at);
+
+        if (isNaN(date.getTime())) {
+            console.log("BAD DATE:", row.started_at);
+        }
+
+        // total time
+        summary.total += duration;
+
+        // category breakdown
+        summary.category[category] =
+            (summary.category[category] || 0) + duration;
+
+        // app usage
+        summary.apps[app] = (summary.apps[app] || 0) + duration;
+
+        // site usage (optional)
+        if (site) {
+            summary.sites[site] = (summary.sites[site] || 0) + duration;
+        }
+
+        // hourly distribution
+        summary.hourly[hour] = (summary.hourly[hour] || 0) + duration;
+
+        // focus switches (basic version)
+        if (lastApp && lastApp !== app) {
+            summary.focus_switches++;
+        }
+        lastApp = app;
+    }
+
+    // helper: top used app/site
+    const getTop = (obj) =>
+        Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+    const report = {
+        userId: rows[0].userId,
+        report_date: new Date(),
+
+        total_tracked_seconds: summary.total,
+
+        productive_seconds: summary.category.productive,
+        distracted_seconds: summary.category.distracted,
+        neutral_seconds: summary.category.neutral,
+
+        focus_switches: summary.focus_switches,
+
+        most_used_app: getTop(summary.apps),
+        most_used_site: getTop(summary.sites),
+
+        // flexible layers (your JSON columns)
+        app_usage_json: summary.apps,
+        category_usage_json: summary.category,
+        hourly_distribution_json: summary.hourly
+    };
+
+    insertReport(report)
+
+    console.log("report generated")
+    console.log(report)
 }
-
-
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

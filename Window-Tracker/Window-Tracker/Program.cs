@@ -149,13 +149,14 @@ class Program
             "Code" => "productive",
             "WindowsTerminal" => "productive",
             "devenv" => "productive",
+            "teams" => "productive",
 
             "chrome" => "distracted",
             "msedge" => "distracted",
             "firefox" => "distracted",
 
             "Discord" => "distracted",
-            "WhatsApp" => "distracted",
+            "WhatsApp.Root" => "distracted",
 
             _ => "unknown"
         };
