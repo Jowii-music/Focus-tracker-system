@@ -4,6 +4,9 @@
   "version": "1.0",
   "description": "Bijhouden of je productief of afgeleid bent per websitebezoek.",
   "permissions": ["tabs", "storage"],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
