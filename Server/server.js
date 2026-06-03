@@ -83,6 +83,8 @@ async function generateReport(batch_id) {
 
     let lastApp = null;
 
+    let lastSite =null;
+
     for (const row of rows) {
         const app = row.app_name;
         const site = getDomain(row.site_url);
@@ -121,6 +123,11 @@ async function generateReport(batch_id) {
             summary.focus_switches++;
         }
         lastApp = app;
+
+        if (lastSite && lastSite !== site) {
+            summary.focus_switches++;
+        }
+        lastSite = site;
 
         summary.source = source
     }
