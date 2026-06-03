@@ -154,7 +154,12 @@ async function generateReport(batch_id) {
         hourly_distribution_json: summary.hourly
     };
 
-    //insertReport(report)
+    if(insertReport(report)){
+        console.log('report inserted')
+    }
+    else{
+        console.log('something went wrong')
+    }
 
     console.log("report generated")
     console.log(report)
