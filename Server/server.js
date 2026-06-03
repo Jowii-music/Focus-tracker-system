@@ -20,6 +20,9 @@ app.post("/sessions/batch", async (req, res) => {
     try{
         const batch = req.body;
         const batch_id = batch[0].BatchId;
+
+        console.log("batch recived:")
+        console.log(batch)
         const inserted = await insertActivityBatch(batch)
 
         res.json({
@@ -53,6 +56,9 @@ async function generateReport(batch_id) {
        `SELECT * FROM activity_logs WHERE batch_id = "${batch_id}"`
     );
 
+    console.log("logging reciced data for report generation")
+    console.log([rows])
+
     if (!rows.length) {
         throw new Error("No activity found for batch");
     }
@@ -67,6 +73,8 @@ async function generateReport(batch_id) {
             unknown: 0
         },
 
+        source: 0,
+
         apps: {},
         sites: {},
         hourly: {},
@@ -77,9 +85,10 @@ async function generateReport(batch_id) {
 
     for (const row of rows) {
         const app = row.app_name;
-        const site = row.site_url;
+        const site = getDomain(row.site_url);
         const duration = row.duration_seconds || 0;
         const category = row.category || "unknown";
+        const source = row.source
 
         const hour = new Date(row.started_at).getHours();
 
@@ -112,21 +121,27 @@ async function generateReport(batch_id) {
             summary.focus_switches++;
         }
         lastApp = app;
+
+        summary.source = source
     }
 
     // helper: top used app/site
     const getTop = (obj) =>
         Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
+    console.log('logging source info:')
+    console.log(summary.source)
+
     const report = {
         userId: rows[0].userId,
         report_date: new Date(),
+        source: summary.source,
 
         total_tracked_seconds: summary.total,
 
         productive_seconds: summary.category.productive,
         distracted_seconds: summary.category.distracted,
-        neutral_seconds: summary.category.neutral,
+        neutral_seconds: summary.category.unknown,
 
         focus_switches: summary.focus_switches,
 
@@ -139,10 +154,20 @@ async function generateReport(batch_id) {
         hourly_distribution_json: summary.hourly
     };
 
-    insertReport(report)
+    //insertReport(report)
 
     console.log("report generated")
     console.log(report)
+}
+
+function getDomain(rawUrl){
+  try{
+    const url = new URL(rawUrl.startsWith("http")? rawUrl: "https://" + rawUrl);
+    return url.hostname.replace(/^www\./, "")
+  }
+  catch{
+    return null
+  }
 }
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

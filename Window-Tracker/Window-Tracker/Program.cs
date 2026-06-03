@@ -101,7 +101,6 @@ class Program
                 lastProcess = activeProcess;
                 sessionStartTime = DateTime.Now;
             }
-
             Thread.Sleep(1000);
         }
 
