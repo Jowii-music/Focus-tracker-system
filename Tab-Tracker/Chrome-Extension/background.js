@@ -69,47 +69,39 @@ function getCategory(url) {
 
   // Controleer op afleidende site
   if (distractingKeywords.some(keyword => url.includes(keyword))) {
-    return "distracting";
+    return "distracted";
   }
 
   // Geen overeenkomst gevonden
   return "unknown";
 }
 
+let sessions =[]
+
 /**
  * Sla een sessie op in chrome.storage.local
  * Sessies worden gegroepeerd per datum
  */
 function saveSession(session) {
+sessions.push(session)
 
-  // Datum van de sessie (YYYY-MM-DD)
-  const date = session.date;
+console.log(sessions)
 
-  // Haal bestaande data op uit lokale opslag
-  chrome.storage.local.get({ sessionsByDate: {} }, (data) => {
+if(sessions.length == 5){
+  sendBatch(sessions)
 
-    // Alle opgeslagen sessies per datum
-    const all = data.sessionsByDate;
+  sessions = []
+}
+}
 
-    // Als er nog geen sessies zijn voor deze datum, maak een nieuwe dag aan
-    if (!all[date]) {
-      all[date] = {
-        date,
-        sessions: []
-      };
-    }
-
-    // Voeg de huidige sessie toe aan de lijst van die dag
-    all[date].sessions.push(session);
-
-    // Sla de bijgewerkte data terug op
-    chrome.storage.local.set({ sessionsByDate: all }, () => {
-
-      // Debugging: toon de opgeslagen sessie in de console
-      console.log("Sessie opgeslagen:", session);
-      console.log("Alle data:", all);
-    });
-  });
+function getDomain(rawUrl){
+  try{
+    const url = new URL(rawUrl.startsWith("http")? rawUrl: "https://" + rawUrl);
+    return url.hostname.replace(/^www\./, "")
+  }
+  catch{
+    return null
+  }
 }
 
 /**
@@ -128,12 +120,17 @@ async function endCurrentSession() {
 
   // Bouw een sessie-object op met alle relevante informatie
   const session = {
-    titel:           currentSession.titel,                              // naam van de pagina
-    category:        currentSession.category,                           // productief / afleidend / onbekend
-    startTime:       formatTime(currentSession.start),                  // starttijd HH:MM:SS
-    endTime:         formatTime(end),                                   // eindtijd HH:MM:SS
-    durationSeconds: Math.round((end - currentSession.start) / 1000),   // duur in seconden
-    date:            formatDate(currentSession.start)                   // datum YYYY-MM-DD
+    UserId: 1,
+    BatchId: 1,
+    Source: "extension",
+    WindowTitle:           currentSession.titel,
+    SiteUrl:         getDomain(currentSession.url),                              // naam van de pagina
+    Category:        currentSession.category,                           // productief / afleidend / onbekend
+    StartedAt:       currentSession.start.toISOString().slice(0, 19).replace("T", " "),                  // starttijd HH:MM:SS
+    EndedAt:         end.toISOString().slice(0, 19).replace("T", " "),                                   // eindtijd HH:MM:SS
+    DurationSeconds: Math.round((end - currentSession.start) / 1000),   // duur in seconden
+    ActivityDate:            formatDate(currentSession.start),                   // datum YYYY-MM-DD
+    
   };
 
   // Sla de sessie op in lokale opslag
@@ -148,7 +145,8 @@ function startSession(tab) {
 
   // Maak een nieuw sessie-object aan voor de actieve tab
   currentSession = {
-    titel:    tab.title || tab.url,         // paginatitel, of URL als fallback
+    titel:    tab.title,
+    url: tab.url,         // paginatitel, of URL als fallback
     category: getCategory(tab.url),         // categorie op basis van URL
     start:    new Date()                    // starttijd van de sessie
   };
@@ -218,21 +216,27 @@ chrome.tabs.query(
     startSession(tab);
   }
 );
-fetch("http://localhost:3000/sessions/batch", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({           
-    app: "YouTube",
-    duration: 120,
-    timestamp: new Date().toISOString()
-  })
-})
-.then(response => response.json())
-.then(data => {
-  console.log("Succes:", data);
-})
-.catch(error => {
-  console.error("Error:", error);
-});
+
+async function sendBatch(batch) {
+  try {
+    const response = await fetch("http://localhost:3000/sessions/batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(batch)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Batch sent successfully:", data);
+
+    return data;
+  } catch (err) {
+    console.error("Failed to send batch:", err);
+  }
+}
+
