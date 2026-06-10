@@ -35,31 +35,31 @@ function getCategory(url) {
   // ── Productieve websites ──
   // Werk, code, documentatie, leerplatformen, projectbeheer
   const productiveKeywords = [
-    "github", "gitlab", "bitbucket",          // versiebeheer
-    "stackoverflow", "stackexchange",          // Q&A voor ontwikkelaars
-    "code", "docs.", "developer.",             // documentatie
-    "learn.", "coursera", "udemy", "edx",     // leerplatformen
-    "notion", "linear", "figma",              // werktools
-    "trello", "jira", "asana", "clickup",     // projectbeheer
-    "google.com/docs", "google.com/sheets",   // Google Workspace
-    "office.com", "teams.microsoft",          // Microsoft 365
-    "leetcode", "codepen", "replit",          // code oefenen
-    "vercel", "netlify", "railway",           // deployment
-    "openai.com", "anthropic.com",            // AI tools
-    "chat.openai", "claude.ai"               // AI chatbots (productief gebruik)
+    "github", "gitlab", "bitbucket",          
+    "stackoverflow", "stackexchange",          
+    "code", "docs.", "developer.",            
+    "learn.", "coursera", "udemy", "edx",     
+    "notion", "linear", "figma",              
+    "trello", "jira", "asana", "clickup",     
+    "google.com/docs", "google.com/sheets",   
+    "office.com", "teams.microsoft",          
+    "leetcode", "codepen", "replit",          
+    "vercel", "netlify", "railway",           
+    "openai.com", "anthropic.com",           
+    "chat.openai", "claude.ai"               
   ];
 
   // ── Afleidende websites ──
   // Sociale media, video streaming, entertainment
   const distractingKeywords = [
-    "youtube.com", "netflix.com",            // video streaming
-    "instagram.com", "facebook.com",         // sociale media
-    "twitter.com", "x.com",                  // microblogging
-    "tiktok.com", "twitch.tv",               // video/gaming
-    "snapchat.com", "pinterest.com",         // visuele sociale media
-    "reddit.com", "tumblr.com",              // forums/blogs
-    "9gag.com", "buzzfeed.com",              // entertainment nieuws
-    "discord.com"                            // gaming chat (kan ook werk zijn)
+    "youtube.com", "netflix.com",            
+    "instagram.com", "facebook.com",         
+    "twitter.com", "x.com",                  
+    "tiktok.com", "twitch.tv",               
+    "snapchat.com", "pinterest.com",         
+    "reddit.com", "tumblr.com",              
+    "9gag.com", "buzzfeed.com",              
+    "discord.com"                            
   ];
 
   // Controleer op productieve site
