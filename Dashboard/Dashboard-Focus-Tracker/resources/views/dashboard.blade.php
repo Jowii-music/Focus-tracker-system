@@ -5,6 +5,7 @@
     <p>{{ $user->id }}</p>
     <p>{{ $user->name }}</p>
     <p>{{ $user->email }}</p>
+    <p>{{ $user->created_at }}</p>
 @endforeach
 <hr>
 
@@ -16,7 +17,6 @@
         Productive: {{ $report->productive_seconds }}<br>
         Distracted: {{ $report->distracted_seconds }}<br>
         Most used site: {{ $report->most_used_site }}<br>
-
     </p>
     <hr>
 @endforeach
