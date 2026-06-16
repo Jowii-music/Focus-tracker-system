@@ -28,8 +28,10 @@ class AuthController extends Controller
             return back()->with('error', 'Wrong email or password.');
         }
 
-        session(['user_id' => $user->userId]);
-        session(['username' => $user->username]);
+        session([
+            'user_id' => $user->id,
+            'username' => $user->name,
+        ]);
 
         return redirect('/dashboard');
     }
@@ -37,19 +39,20 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         DB::table('users')->insert([
-            'username' => $request->username,
+            'name' => $request->username,
             'email' => $request->email,
             'password' => $request->password,
-            'userId' => DB::table('users')->max('userId') + 1,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        return redirect('/login')->with('success', 'Account created. You can now log in.');
+        return redirect('/login')
+            ->with('success', 'Account created successfully.');
     }
 
     public function logout()
     {
-        session()->forget('user_id');
-        session()->forget('username');
+        session()->flush();
 
         return redirect('/login');
     }
