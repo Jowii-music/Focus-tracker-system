@@ -181,6 +181,75 @@ function getDomain(rawUrl){
     return null
   }
 }
+
+app.post("/post/notifications", async (req, res) => {
+    const userId = req.body.userId;
+
+    const {
+        header,
+        content
+    } = req.body;
+
+    try {
+        await db.query(
+            `
+            INSERT INTO notifications
+            (userId, header, content)
+            VALUES (?, ?, ?)
+            `,
+            [userId, header, content]
+        );
+
+        res.status(201).json({
+            success: true
+        });
+    }
+    catch(err){
+        console.error("notification creation failed:", err);
+
+        res.status(500).json({
+            error: "Internal server error"
+        });
+    }
+});
+
+app.get("/fetch/notifications", async (req, res) => {
+    const userId = req.body.userId;
+    const since = req.query.since;
+
+    try {
+        let query = `
+            SELECT *
+            FROM notifications
+            WHERE userId = ?
+        `;
+
+        const params = [userId];
+
+        if (since) {
+            query += ` AND created_at > ?`;
+            params.push(since);
+        }
+
+        query += ` ORDER BY created_at ASC`;
+
+        const [result] = await db.query(query, params);
+
+        console.log("userId:", userId);
+        console.log("since:", since);
+        console.log("params:", params);
+        console.log("query:", query);
+
+        res.json({
+            notifications: result,
+            serverTime: new Date().toISOString()
+        });
+
+    } catch (err) {
+        console.error("notification fetch failed:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
