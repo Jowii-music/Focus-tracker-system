@@ -121,7 +121,7 @@ async function endCurrentSession() {
   // Bouw een sessie-object op met alle relevante informatie
   const session = {
     UserId: 1,
-    BatchId: 1,
+    BatchId: crypto.randomUUID(),
     Source: "extension",
     WindowTitle:           currentSession.titel,
     SiteUrl:         getDomain(currentSession.url),                              // naam van de pagina
