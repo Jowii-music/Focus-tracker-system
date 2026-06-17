@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
 
+// MODELS
 class SessionEvent
 {
     public string BatchId { get; set; }
@@ -33,99 +34,112 @@ class SessionEvent
     public DateTime CreatedAt { get; set; }
 }
 
-class Program
+// ===================== INPUT =====================
+static class Input
 {
-    [DllImport("user32.dll")]
-    static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-    static HttpClient httpClient = new HttpClient();
-
-    static string GetActiveProcessName()
+    public static string GetActiveProcessName()
     {
-        IntPtr hwnd = GetForegroundWindow();
+        var hwnd = NativeMethods.GetForegroundWindow();
         if (hwnd == IntPtr.Zero)
             return null;
 
-        uint pid;
-        GetWindowThreadProcessId(hwnd, out pid);
+        NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
 
         try
         {
-            Process p = Process.GetProcessById((int)pid);
-            return p.ProcessName;
+            return Process.GetProcessById((int)pid).ProcessName;
         }
         catch
         {
             return null;
         }
     }
+}
 
-    static string lastProcess = null;
-    static DateTime sessionStartTime;
+// ===================== STATE =====================
+static class State
+{
+    public static HttpClient HttpClient = new HttpClient();
 
-    static bool isRunning = true;
+    public static string LastProcess;
+    public static DateTime SessionStartTime;
 
-    static List<SessionEvent> batch = new List<SessionEvent>();
+    public static bool IsRunning = true;
 
-    static void Main(string[] args)
+    public static List<SessionEvent> Batch = new List<SessionEvent>();
+
+    public static string Batch_id = Guid.NewGuid().ToString();
+
+    public static double DistractionThresholdMinutes = 1;
+}
+
+// ===================== LOGIC =====================
+static class Logic
+{
+    public static void HandleProcessChange(string activeProcess)
     {
-        Thread stopThread = new Thread(() =>
+        if (activeProcess == State.LastProcess)
+            return;
+
+        if (State.LastProcess != null)
         {
-            Console.ReadLine();
-            isRunning = false;
-        });
+            var endTime = DateTime.Now;
 
-        stopThread.Start();
+            var session = Helpers.CreateSessionEvent(
+                State.LastProcess,
+                State.SessionStartTime,
+                endTime
+            );
 
-        while (isRunning)
-        {
-            string activeProcess = GetActiveProcessName();
+            State.Batch.Add(session);
 
-            if (activeProcess != lastProcess)
-            {
-                if (lastProcess != null)
-                {
-                    DateTime endTime = DateTime.Now;
-
-                    var session = CreateSessionEvent(lastProcess, sessionStartTime, endTime);
-                    batch.Add(session);
-
-                    Console.WriteLine(
-                        $"EVENT | {session.AppName} | {session.StartedAt:HH:mm:ss} → {session.EndedAt:HH:mm:ss} | {session.DurationSeconds}s | {session.Category}"
-                    );
-                }
-
-                lastProcess = activeProcess;
-                sessionStartTime = DateTime.Now;
-            }
-            Thread.Sleep(1000);
+            Console.WriteLine(
+                $"EVENT | {session.AppName} | {session.StartedAt:HH:mm:ss} → {session.EndedAt:HH:mm:ss} | {session.DurationSeconds}s | {session.Category}"
+            );
         }
 
-        Console.WriteLine("Tracker stopped.");
-        SendBatchToServer(batch).Wait();
-        Console.WriteLine(Directory.GetCurrentDirectory());
-
-        File.WriteAllText(
-            "sessions.json",
-            System.Text.Json.JsonSerializer.Serialize(batch, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            })
-        );
-
-        
+        State.LastProcess = activeProcess;
+        State.SessionStartTime = DateTime.Now;
     }
 
-    static string Batch_id = Guid.NewGuid().ToString();
+    public static DateTime? distractionStart = null;
 
-    static SessionEvent CreateSessionEvent(string appName, DateTime start, DateTime end)
+    public static void DetectNotification(string activeProcess)
+    {
+        var category = Helpers.GetCategory(activeProcess);
+
+        if (category == "distracted")
+        {
+            if (distractionStart == null)
+            {
+                distractionStart = DateTime.Now;
+            }
+            var minutes = (DateTime.Now - distractionStart.Value).TotalMinutes;
+
+            if (minutes > State.DistractionThresholdMinutes)
+            {
+                Console.WriteLine("⚠️ Distracted for 5+ minutes");
+
+                //Later: GenerateNotification()
+
+                distractionStart = DateTime.Now;
+            }
+        }
+        else
+        {
+            distractionStart = null;
+        }
+    }
+}
+
+// ===================== HELPERS =====================
+static class Helpers
+{
+    public static SessionEvent CreateSessionEvent(string appName, DateTime start, DateTime end)
     {
         return new SessionEvent
         {
-            BatchId = Batch_id,
+            BatchId = State.Batch_id,
             UserId = 1,
 
             AppName = appName,
@@ -141,7 +155,7 @@ class Program
         };
     }
 
-    static string GetCategory(string app)
+    public static string GetCategory(string app)
     {
         return app switch
         {
@@ -160,8 +174,12 @@ class Program
             _ => "unknown"
         };
     }
+}
 
-    static async Task SendBatchToServer(List<SessionEvent> batch)
+// ===================== OUTPUT =====================
+static class Output
+{
+    public static async Task SendBatchToServer(List<SessionEvent> batch)
     {
         Console.WriteLine("Sending batch to server...");
         string batchCount = batch.Count.ToString();
@@ -174,7 +192,7 @@ class Program
 
             Console.WriteLine($"POST http://localhost:3000/sessions/batch");
 
-            var response = await httpClient.PostAsync(
+            var response = await State.HttpClient.PostAsync(
                 "http://localhost:3000/sessions/batch",
                 content
             );
@@ -202,13 +220,77 @@ class Program
     }
 
     static NotifyIcon notify;
-    static void InitNotify()
+    public static void InitNotify()
     {
         notify = new NotifyIcon
         {
-            Icon= SystemIcons.Application,
+            Icon = SystemIcons.Application,
             Visible = true,
             Text = "Batch has been deliverd!"
         };
+    }
+
+    public static void SaveBatchToFile(List<SessionEvent> batch)
+    {
+        File.WriteAllText(
+            "sessions.json",
+            System.Text.Json.JsonSerializer.Serialize(batch, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            })
+        );
+    }
+}
+
+// ===================== NATIVE METHODS =====================
+static class NativeMethods
+{
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(
+        IntPtr hWnd,
+        out uint lpdwProcessId
+    );
+}
+
+// ===================== CONTROL =====================
+static class Control
+{
+    public static void StartStopThread()
+    {
+        new Thread(() =>
+        {
+            Console.ReadLine();
+            State.IsRunning = false;
+        }).Start();
+    }
+
+    public static void Shutdown()
+    {
+        Console.WriteLine("Tracker stopped.");
+        Output.SendBatchToServer(State.Batch).Wait();
+        Console.WriteLine(Directory.GetCurrentDirectory());
+        Output.SaveBatchToFile(State.Batch);
+    }
+}
+
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        Control.StartStopThread();
+        while (State.IsRunning)
+        {
+            var activeProcess = Input.GetActiveProcessName();
+
+            Logic.HandleProcessChange(activeProcess);
+            Logic.DetectNotification(activeProcess);
+
+            Thread.Sleep(1000);
+        }
+        Control.Shutdown();
     }
 }
