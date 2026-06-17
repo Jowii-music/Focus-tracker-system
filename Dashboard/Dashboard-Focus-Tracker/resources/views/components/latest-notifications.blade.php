@@ -51,23 +51,30 @@
     </p>
 
     <br>
+    <br>
+    
+<div class="notification-row">
+    <span class="muted">11:08</span>
+    <span class="badge badge-orange">Distracted</span>
+    <span>Instagram open for 4 min.</span>
+</div>
 
-    <div class="notification-row">
-        <span class="muted">13:42</span>
-        <span class="badge badge-red">Too long</span>
-        <span>Lost focus for 18 min — YouTube & Reddit</span>
-    </div>
+<div class="notification-row">
+    <span class="muted">10:41</span>
+    <span class="badge badge-blue">Break</span>
+    <span>Break completed. Focus session resumed.</span>
+</div>
 
-    <div class="notification-row">
-        <span class="muted">12:10</span>
-        <span class="badge badge-blue">Break</span>
-        <span>Time to take a short break.</span>
-    </div>
+<div class="notification-row">
+    <span class="muted">10:02</span>
+    <span class="badge badge-red">Too long</span>
+    <span>YouTube active for 15 min.</span>
+</div>
 
-    <div class="notification-row">
-        <span class="muted">11:08</span>
-        <span class="badge badge-orange">Distracted</span>
-        <span>Instagram open for 4 min.</span>
-    </div>
+<div class="notification-row">
+    <span class="muted">09:25</span>
+    <span class="badge badge-orange">Distracted</span>
+    <span>Reddit open for 6 min.</span>
+</div>
 
 </section>

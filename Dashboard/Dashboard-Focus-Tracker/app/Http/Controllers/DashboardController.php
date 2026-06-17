@@ -26,4 +26,22 @@ class DashboardController extends Controller
             'latestReport' => $latestReport
         ]);
     }
+
+    public function notifications()
+    {
+        if (!session('user_id')) {
+            return redirect('/login');
+        }
+
+        return view('notifications');
+    }
+
+        public function settings()
+    {
+        if (!session('user_id')) {
+            return redirect('/login');
+        }
+
+        return view('settings');
+    }
 }

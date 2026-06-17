@@ -4,7 +4,7 @@
 }
 
 .chart-box {
-    height: 540px;
+    height: 740px;
     margin-top: 20px;
 }
 
