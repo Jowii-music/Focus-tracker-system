@@ -11,7 +11,7 @@
     }   
 
     .time-chart-box {
-        height: 360px;
+        height: 350px;
     }
 
     .time-header {
