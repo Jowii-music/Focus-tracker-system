@@ -88,11 +88,12 @@
 
         <div class="dashboard-grid">
             @include('components.time-split')
-            @include('components.daily-activity')
+            @include('components.control-panel')
             @include('components.app-usage')
             @include('components.stats')
             @include('components.latest-notifications')
         </div>
+
     </main>
 
 </body>

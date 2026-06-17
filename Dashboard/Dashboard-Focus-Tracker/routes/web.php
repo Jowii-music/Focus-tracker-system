@@ -17,3 +17,5 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::get('/notifications', [DashboardController::class, 'notifications']);
+Route::get('/settings', [DashboardController::class, 'settings']);
