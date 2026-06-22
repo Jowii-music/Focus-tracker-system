@@ -145,6 +145,7 @@
             justify-content: center;
             align-items: center;
             z-index: 999;
+            padding: 24px;
         }
 
         .modal-overlay.show {
@@ -184,20 +185,6 @@
         .cancel-btn {
             background: rgba(255,255,255,0.12);
         }
-
-        .password-error {
-            display: none;
-            color: #f87171;
-            font-size: 13px;
-            margin-top: 8px;
-        }
-
-        .password-success {
-            display: none;
-            color: #34d399;
-            font-size: 13px;
-            margin-top: 8px;
-        }
     </style>
 </head>
 
@@ -210,14 +197,16 @@
         <p class="subtitle">Log in to continue tracking your focus.</p>
 
         @if(session('error'))
-            <div class="error-box">
-                {{ session('error') }}
-            </div>
+            <div class="error-box">{{ session('error') }}</div>
         @endif
 
         @if(session('success'))
-            <div class="success-box">
-                {{ session('success') }}
+            <div class="success-box">{{ session('success') }}</div>
+        @endif
+
+        @if($errors->any())
+            <div class="error-box">
+                {{ $errors->first() }}
             </div>
         @endif
 
@@ -234,9 +223,7 @@
                 <input class="input" type="password" name="password" placeholder="Enter your password" required>
             </div>
 
-            <button class="login-btn" type="submit">
-                Login
-            </button>
+            <button class="login-btn" type="submit">Login</button>
 
             <div class="forgot-wrap">
                 <a href="#" class="forgot-link" id="forgotPasswordBtn">
@@ -257,46 +244,37 @@
     <div class="modal">
         <h2 class="modal-title">Reset Password</h2>
         <p class="modal-subtitle">
-            Enter your email, old password, then your new password.
+            Enter your email and choose a new password.
         </p>
 
-        <div class="input-group">
-            <label>Email Address</label>
-            <input class="input" type="email" id="resetEmail" placeholder="Enter your email">
-        </div>
+        <form method="POST" action="/password-reset">
+            @csrf
 
-        <div class="input-group">
-            <label>Old Password</label>
-            <input class="input" type="password" id="oldPassword" placeholder="Enter old password">
-        </div>
+            <div class="input-group">
+                <label>Email Address</label>
+                <input class="input" type="email" name="email" placeholder="Enter your email" required>
+            </div>
 
-        <div class="input-group">
-            <label>New Password</label>
-            <input class="input" type="password" id="newPassword" placeholder="Enter new password">
-        </div>
+            <div class="input-group">
+                <label>New Password</label>
+                <input class="input" type="password" name="password" placeholder="Enter new password" required>
+            </div>
 
-        <div class="input-group">
-            <label>Confirm New Password</label>
-            <input class="input" type="password" id="confirmPassword" placeholder="Confirm new password">
-        </div>
+            <div class="input-group">
+                <label>Confirm New Password</label>
+                <input class="input" type="password" name="password_confirmation" placeholder="Confirm new password" required>
+            </div>
 
-        <div class="password-error" id="passwordError">
-            Fill email and old password. New password must be at least 6 characters and match confirmation.
-        </div>
+            <div class="modal-actions">
+                <button type="submit" class="modal-btn">
+                    Reset Password
+                </button>
 
-        <div class="password-success" id="passwordSuccess">
-            Password reset request accepted.
-        </div>
-
-        <div class="modal-actions">
-            <button type="button" class="modal-btn" id="resetPasswordBtn">
-                Reset Password
-            </button>
-
-            <button type="button" class="modal-btn cancel-btn" id="closeModal">
-                Cancel
-            </button>
-        </div>
+                <button type="button" class="modal-btn cancel-btn" id="closeModal">
+                    Cancel
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -304,9 +282,6 @@
 const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
 const forgotPasswordModal = document.getElementById('forgotPasswordModal');
 const closeModal = document.getElementById('closeModal');
-const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-const passwordError = document.getElementById('passwordError');
-const passwordSuccess = document.getElementById('passwordSuccess');
 
 forgotPasswordBtn.addEventListener('click', function(event) {
     event.preventDefault();
@@ -321,23 +296,6 @@ forgotPasswordModal.addEventListener('click', function(event) {
     if (event.target === forgotPasswordModal) {
         forgotPasswordModal.classList.remove('show');
     }
-});
-
-resetPasswordBtn.addEventListener('click', function() {
-    const email = document.getElementById('resetEmail').value.trim();
-    const oldPassword = document.getElementById('oldPassword').value.trim();
-    const newPassword = document.getElementById('newPassword').value.trim();
-    const confirmPassword = document.getElementById('confirmPassword').value.trim();
-
-    passwordError.style.display = 'none';
-    passwordSuccess.style.display = 'none';
-
-    if (!email || !oldPassword || !newPassword || !confirmPassword || newPassword.length < 6 || newPassword !== confirmPassword) {
-        passwordError.style.display = 'block';
-        return;
-    }
-
-    passwordSuccess.style.display = 'block';
 });
 </script>
 

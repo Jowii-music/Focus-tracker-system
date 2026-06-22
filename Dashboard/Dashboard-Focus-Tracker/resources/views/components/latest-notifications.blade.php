@@ -1,3 +1,18 @@
+@php
+    $latestNotifications = \App\Models\Notification::where('user_id', session('user_id'))
+        ->whereDate('created_at', today())
+        ->latest('created_at')
+        ->take(4)
+        ->get();
+
+    function notificationBadge($type) {
+        if (str_contains($type, 'paused') || str_contains($type, 'break')) return ['Break', 'badge-blue'];
+        if (str_contains($type, 'cancelled') || str_contains($type, 'bad')) return ['Alert', 'badge-red'];
+        if (str_contains($type, 'distracted')) return ['Distracted', 'badge-orange'];
+        return ['Focus', 'badge-green'];
+    }
+@endphp
+
 <style>
 .notification-row {
     display: grid;
@@ -8,14 +23,13 @@
     font-size: 14px;
 }
 
-.notification-row:last-child {
-    border-bottom: none;
-}
+.notification-row:last-child { border-bottom: none; }
 
 .badge {
     padding: 4px 10px;
     border-radius: 20px;
     font-size: 13px;
+    width: fit-content;
 }
 
 .badge-red {
@@ -33,6 +47,11 @@
     color: #fb923c;
 }
 
+.badge-green {
+    background: rgba(52,211,153,0.18);
+    color: #34d399;
+}
+
 .muted {
     color: rgba(255,255,255,0.55);
 }
@@ -42,7 +61,7 @@
 }
 </style>
 
-<section class="card notification-card area-notifications">
+<section class="card notification-card area-notifications" id="latestNotificationsCard">
 
     <div class="card-title">Latest notifications</div>
 
@@ -50,31 +69,72 @@
         Only the newest alerts are shown here.
     </p>
 
-    <br>
-    <br>
-    
-<div class="notification-row">
-    <span class="muted">11:08</span>
-    <span class="badge badge-orange">Distracted</span>
-    <span>Instagram open for 4 min.</span>
-</div>
+    <br><br>
+<div id="latestNotificationsBody">
+    @forelse($latestNotifications as $notification)
+        @php
+            [$label, $badgeClass] = notificationBadge($notification->type);
+        @endphp
 
-<div class="notification-row">
-    <span class="muted">10:41</span>
-    <span class="badge badge-blue">Break</span>
-    <span>Break completed. Focus session resumed.</span>
-</div>
+        <div class="notification-row">
+            <span class="muted">
+                {{ \Carbon\Carbon::parse($notification->created_at)->format('H:i') }}
+            </span>
 
-<div class="notification-row">
-    <span class="muted">10:02</span>
-    <span class="badge badge-red">Too long</span>
-    <span>YouTube active for 15 min.</span>
-</div>
+            <span class="badge {{ $badgeClass }}">
+                {{ $label }}
+            </span>
 
-<div class="notification-row">
-    <span class="muted">09:25</span>
-    <span class="badge badge-orange">Distracted</span>
-    <span>Reddit open for 6 min.</span>
-</div>
+            <span>{{ $notification->message }}</span>
+        </div>
+    @empty
+        <p class="muted">
+            No notifications yet today.
+        </p>
+    @endforelse
+    </div>
 
 </section>
+<script>
+async function refreshLatestNotifications() {
+
+    const response = await fetch('/latest-notifications');
+
+    const notifications = await response.json();
+
+    let html = '';
+
+    notifications.forEach(notification => {
+
+        let label = 'Focus';
+        let badge = 'badge-green';
+
+        if (notification.type.includes('paused') || notification.type.includes('break')) {
+            label = 'Break';
+            badge = 'badge-blue';
+        }
+
+        if (notification.type.includes('cancelled') || notification.type.includes('bad')) {
+            label = 'Alert';
+            badge = 'badge-red';
+        }
+
+        if (notification.type.includes('distracted')) {
+            label = 'Distracted';
+            badge = 'badge-orange';
+        }
+
+        html += `
+            <div class="notification-row">
+                <span class="muted">${notification.time}</span>
+                <span class="badge ${badge}">${label}</span>
+                <span>${notification.message}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById('latestNotificationsBody').innerHTML = html;
+}
+
+setInterval(refreshLatestNotifications, 3000);
+</script>

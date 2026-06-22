@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -19,18 +20,29 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $user = DB::table('users')
-            ->where('email', $request->email)
-            ->where('password', $request->password)
-            ->first();
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
 
         if (!$user) {
             return back()->with('error', 'Wrong email or password.');
         }
 
+        if (!Hash::isHashed($user->password)) {
+            return back()->with('error', 'Old account password must be reset.');
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
+            return back()->with('error', 'Wrong email or password.');
+        }
+
         session([
-            'user_id' => $user->id,
-            'username' => $user->name,
+            'user_id' => $user->userId,
+            'username' => $user->username,
+            'full_name' => $user->full_name,
         ]);
 
         return redirect('/dashboard');
@@ -38,16 +50,37 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        DB::table('users')->insert([
-            'name' => $request->username,
-            'email' => $request->email,
-            'password' => $request->password,
-            'created_at' => now(),
-            'updated_at' => now(),
+        $request->validate([
+            'name' => 'required|min:2',
+            'username' => 'required|min:3|unique:users,username',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6',
         ]);
 
-        return redirect('/login')
-            ->with('success', 'Account created successfully.');
+        User::create([
+            'full_name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect('/login')->with('success', 'Account created successfully.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|min:6|confirmed',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect('/login')->with('success', 'Password reset successfully.');
     }
 
     public function logout()

@@ -1,3 +1,8 @@
+@php
+    $username = session('username', 'User');
+    $activeSession = $activeSession ?? null;
+@endphp
+
 <style>
 .control-card {
     grid-column: span 1;
@@ -115,22 +120,20 @@
     cursor: not-allowed;
 }
 
-.time-grid {
-    display: grid;
-    grid-template-columns: 100px 100px 1fr;
-    gap: 12px;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-    appearance: none;
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
 input[type="number"] {
-    appearance: textfield;
     -moz-appearance: textfield;
+}
+
+.time-grid {
+    display: grid;
+    grid-template-columns: 100px 100px 1fr;
+    gap: 12px;
 }
 
 .select-wrap {
@@ -169,7 +172,7 @@ input[type="number"] {
 }
 
 .control-btn {
-    flex: 1;
+    width: 100%;
     height: 44px;
     border: none;
     border-radius: 14px;
@@ -179,7 +182,8 @@ input[type="number"] {
     font-size: 15px;
 }
 
-.start-btn {
+.start-btn,
+.finish-btn {
     background: linear-gradient(90deg, #34d399, #10b981);
 }
 
@@ -191,13 +195,27 @@ input[type="number"] {
     background: linear-gradient(90deg, #60a5fa, #3b82f6);
 }
 
-.stop-btn {
+.cancel-btn-main {
     display: none;
     background: linear-gradient(90deg, #f87171, #ef4444);
 }
 
-.stop-btn.visible {
+.cancel-btn-main.visible {
     display: block;
+}
+
+.finish-btn {
+    display: none;
+    margin-top: 12px;
+}
+
+.finish-btn.visible {
+    display: block;
+}
+
+.reset-btn {
+    background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.80);
 }
 
 .error-message {
@@ -206,31 +224,67 @@ input[type="number"] {
     color: #f87171;
 }
 
-.control-footer {
-    margin-top: 22px;
-    padding-top: 18px;
-    border-top: 1px solid rgba(255,255,255,0.10);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.58);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+}
+
+.confirm-overlay.show {
+    display: flex;
+}
+
+.confirm-box {
+    width: 390px;
+    padding: 26px;
+    border-radius: 22px;
+    background: rgba(35, 28, 72, 0.98);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+
+.confirm-title {
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+
+.confirm-text {
+    color: rgba(255,255,255,0.65);
+    font-size: 14px;
+    margin-bottom: 22px;
+    line-height: 1.5;
+}
+
+.confirm-actions {
+    display: flex;
     gap: 12px;
 }
 
-.mini-info {
-    padding: 14px;
+.confirm-btn {
+    flex: 1;
+    height: 42px;
+    border: none;
     border-radius: 14px;
-    background: rgba(255,255,255,0.045);
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
-.mini-info-title {
-    font-size: 12px;
+    color: white;
     font-weight: 900;
-    margin-bottom: 6px;
+    cursor: pointer;
 }
 
-.mini-info-text {
-    font-size: 12px;
-    color: rgba(255,255,255,0.58);
+.confirm-green {
+    background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.confirm-red {
+    background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
+.confirm-no {
+    background: rgba(255,255,255,0.12);
 }
 </style>
 
@@ -240,29 +294,35 @@ input[type="number"] {
         <div class="control-time" id="localTime">--:--</div>
     </div>
 
-    <div class="control-greeting" id="controlGreeting">Good morning, <span class="user-gradient">User</span></div>
-    <div class="control-tip" id="controlTip">Start with one clear goal.</div>
+    <div class="control-greeting" id="controlGreeting">
+        Good night, <span class="user-gradient">{{ $username }}</span>
+    </div>
 
-    <br>
-    <br>
-    
+    <div class="control-tip" id="controlTip">
+        Keep it light, calm, and focused.
+    </div>
+
+    <br><br>
+
     <div class="control-form">
         <div>
             <div class="field-label">Today's goal</div>
             <div class="goal-wrap">
                 <input
                     type="text"
-                    maxlength="50"
+                    maxlength="100"
                     class="control-input goal-input"
                     id="sessionGoal"
                     placeholder="Example: Finish dashboard layout"
+                    value="{{ $activeSession->goal ?? '' }}"
                 >
-                <span class="char-counter" id="charCounter">50 left</span>
+                <span class="char-counter" id="charCounter">100 left</span>
             </div>
         </div>
 
         <div>
             <div class="field-label">Set time</div>
+
             <div class="time-grid">
                 <input type="number" min="0" max="12" class="control-input" id="sessionHours" placeholder="Hours">
                 <input type="number" min="0" max="59" class="control-input" id="sessionMinutes" placeholder="Minutes">
@@ -283,65 +343,59 @@ input[type="number"] {
         </div>
 
         <div class="control-actions">
-            <button class="control-btn start-btn" id="startPauseBtn" type="button">Start session</button>
-            <button class="control-btn stop-btn" id="stopBtn" type="button">Stop session</button>
+            <button class="control-btn start-btn" id="startPauseBtn" type="button">
+                Start session
+            </button>
+
+            <button class="control-btn cancel-btn-main" id="cancelBtn" type="button">
+                Cancel
+            </button>
         </div>
+
+        <button class="control-btn finish-btn" id="finishBtn" type="button">
+            Finish session
+        </button>
+
+        <button class="control-btn reset-btn" id="resetBtn" type="button">
+            Clear
+        </button>
 
         <div class="error-message" id="controlError"></div>
     </div>
 </section>
 
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <div class="confirm-title" id="confirmTitle">Confirm</div>
+        <div class="confirm-text" id="confirmText">Are you sure?</div>
+
+        <div class="confirm-actions">
+            <button class="confirm-btn confirm-green" id="confirmYesBtn" type="button">
+                Yes
+            </button>
+
+            <button class="confirm-btn confirm-no" id="confirmNoBtn" type="button">
+                No
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-const loggedInUserName = @json(session('username') ?? optional(auth()->user())->username ?? optional(auth()->user())->name ?? 'User');
+const loggedInUserName = "{{ $username }}";
+const csrfToken = "{{ csrf_token() }}";
 
-const greetings = {
-    morning: "Good morning",
-    noon: "Good day",
-    afternoon: "Good afternoon",
-    evening: "Good evening",
-    night: "Good night"
-};
+let sessionActive = "{{ $activeSession ? 'yes' : 'no' }}" === "yes";
+let sessionPaused = "{{ optional($activeSession)->status }}" === "paused";
+let activeSessionId = "{{ $activeSession->id ?? '' }}";
+let activeSessionTitle = "{{ $activeSession->title ?? '' }}";
+let activeSessionStartedAt = "{{ $activeSession->started_at ?? '' }}";
+let confirmAction = null;
+let controlCountdownInterval = null;
+let controlRemainingSeconds = 0;
+let autoEnding = false;
 
-const tips = {
-    morning: [
-        "Pick one task and let the morning stay clean.",
-        "Start with one clear goal before opening extra tabs.",
-        "Begin with the task that matters most.",
-        "Small progress early makes the rest of the day lighter.",
-        "Keep your first session calm and focused."
-    ],
-    noon: [
-        "Take a breath and choose what matters next.",
-        "A small midday win can save the whole day.",
-        "Reset your focus with one useful target.",
-        "Pause, breathe, and continue with one clear task.",
-        "Use this moment to get back on track."
-    ],
-    afternoon: [
-        "Stay steady and finish one thing properly.",
-        "Protect your focus from random distractions.",
-        "A clear next step is better than a messy plan.",
-        "Keep it simple and keep moving.",
-        "One clean push can still change the day."
-    ],
-    evening: [
-        "Wrap up one useful thing before the day ends.",
-        "Finish gently, but finish something.",
-        "A clean ending makes tomorrow easier.",
-        "Slow focus still counts.",
-        "Close the day with one clear win."
-    ],
-    night: [
-        "Keep it light, calm, and focused.",
-        "One small task is enough for tonight.",
-        "Protect your rest while you work.",
-        "Quiet focus. No pressure.",
-        "Do not trade your peace for chaos."
-    ]
-};
-
-let sessionActive = false;
-let sessionPaused = false;
+const initialTargetSeconds = Number("{{ $activeSession->target_seconds ?? 0 }}");
 
 const timeEl = document.getElementById("localTime");
 const greetingEl = document.getElementById("controlGreeting");
@@ -354,23 +408,40 @@ const minutesInput = document.getElementById("sessionMinutes");
 const quickLength = document.getElementById("quickLength");
 
 const startPauseBtn = document.getElementById("startPauseBtn");
-const stopBtn = document.getElementById("stopBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const finishBtn = document.getElementById("finishBtn");
+const resetBtn = document.getElementById("resetBtn");
 const errorEl = document.getElementById("controlError");
 
-function randomItem(items) {
-    return items[Math.floor(Math.random() * items.length)];
+const confirmOverlay = document.getElementById("confirmOverlay");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmText = document.getElementById("confirmText");
+const confirmYesBtn = document.getElementById("confirmYesBtn");
+const confirmNoBtn = document.getElementById("confirmNoBtn");
+
+function getTargetSeconds() {
+    return (((Number(hoursInput.value) || 0) * 60) + (Number(minutesInput.value) || 0)) * 60;
 }
 
-function getTimePeriod(hour) {
-    if (hour >= 5 && hour < 12) return "morning";
-    if (hour >= 12 && hour < 14) return "noon";
-    if (hour >= 14 && hour < 18) return "afternoon";
-    if (hour >= 18 && hour < 22) return "evening";
-    return "night";
+function fillTimeInputsFromSeconds(totalSeconds) {
+    const totalMinutes = Math.floor(totalSeconds / 60);
+
+    hoursInput.value = Math.floor(totalMinutes / 60);
+    minutesInput.value = totalMinutes % 60;
 }
 
-const currentPeriod = getTimePeriod(new Date().getHours());
-const chosenTip = randomItem(tips[currentPeriod]);
+function sendLiveUpdate(status, extra = {}) {
+    window.dispatchEvent(new CustomEvent("focusSessionChanged", {
+        detail: {
+            status: status,
+            title: activeSessionTitle,
+            target_seconds: getTargetSeconds(),
+            started_at: activeSessionStartedAt || new Date().toISOString(),
+            remaining_seconds: controlRemainingSeconds,
+            ...extra
+        }
+    }));
+}
 
 function updateClock() {
     const now = new Date();
@@ -383,19 +454,60 @@ function updateClock() {
 }
 
 function setGreeting() {
-    greetingEl.innerHTML = `${greetings[currentPeriod]}, <span class="user-gradient">${loggedInUserName}</span>`;
-    tipEl.textContent = chosenTip;
+    const hour = new Date().getHours();
+
+    let greeting = "Good night";
+    let tip = "Keep it light, calm, and focused.";
+
+    if (hour >= 5 && hour < 12) {
+        greeting = "Good morning";
+        tip = "Start with one clear goal before opening extra tabs.";
+    } else if (hour >= 12 && hour < 18) {
+        greeting = "Good day";
+        tip = "Stay steady and finish one thing properly.";
+    } else if (hour >= 18 && hour < 22) {
+        greeting = "Good evening";
+        tip = "Wrap up one useful thing before the day ends.";
+    }
+
+    greetingEl.innerHTML = `${greeting}, <span class="user-gradient">${loggedInUserName}</span>`;
+    tipEl.textContent = tip;
 }
 
 function updateCharCounter() {
-    const left = 50 - goalInput.value.length;
-    charCounter.textContent = `${left} left`;
+    charCounter.textContent = `${100 - goalInput.value.length} left`;
 }
 
-function getTotalMinutes() {
-    const hours = Number(hoursInput.value) || 0;
-    const minutes = Number(minutesInput.value) || 0;
-    return (hours * 60) + minutes;
+function calculateRemainingSecondsFromStart() {
+    if (!activeSessionStartedAt || initialTargetSeconds <= 0) {
+        return getTargetSeconds();
+    }
+
+    const startTime = new Date(activeSessionStartedAt).getTime();
+    const now = new Date().getTime();
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+
+    return Math.max(0, initialTargetSeconds - elapsedSeconds);
+}
+
+function startControlCountdown() {
+    clearInterval(controlCountdownInterval);
+
+    controlCountdownInterval = setInterval(function () {
+        if (!sessionActive || sessionPaused || autoEnding) return;
+
+        controlRemainingSeconds--;
+
+        if (controlRemainingSeconds <= 0) {
+            controlRemainingSeconds = 0;
+            autoEnding = true;
+            endSession("finish", true);
+        }
+    }, 1000);
+}
+
+function stopControlCountdown() {
+    clearInterval(controlCountdownInterval);
 }
 
 function lockInputs(locked) {
@@ -403,6 +515,7 @@ function lockInputs(locked) {
     hoursInput.disabled = locked;
     minutesInput.disabled = locked;
     quickLength.disabled = locked;
+    resetBtn.disabled = locked;
 }
 
 function showError(message) {
@@ -432,67 +545,254 @@ function setButtonState(state) {
     }
 }
 
-function startSession() {
+function showSessionButtons(show) {
+    cancelBtn.classList.toggle("visible", show);
+    finishBtn.classList.toggle("visible", show);
+}
+
+function openConfirm(type) {
+    confirmAction = type;
+
+    confirmYesBtn.classList.remove("confirm-green", "confirm-red");
+
+    if (type === "finish") {
+        confirmTitle.textContent = "Finish session?";
+        confirmText.textContent = "This will finish the session and save the result.";
+        confirmYesBtn.textContent = "Finish";
+        confirmYesBtn.classList.add("confirm-green");
+    }
+
+    if (type === "cancel") {
+        confirmTitle.textContent = "Cancel session?";
+        confirmText.textContent = "This will cancel the session. It will not count as completed.";
+        confirmYesBtn.textContent = "Cancel";
+        confirmYesBtn.classList.add("confirm-red");
+    }
+
+    confirmOverlay.classList.add("show");
+}
+
+function closeConfirm() {
+    confirmOverlay.classList.remove("show");
+    confirmAction = null;
+}
+
+function resetControlPanel() {
+    activeSessionId = null;
+    activeSessionTitle = "";
+    activeSessionStartedAt = "";
+    sessionActive = false;
+    sessionPaused = false;
+    autoEnding = false;
+
+    stopControlCountdown();
+    lockInputs(false);
+    setButtonState("start");
+    showSessionButtons(false);
+}
+
+async function startSession() {
     const goal = goalInput.value.trim();
-    const totalMinutes = getTotalMinutes();
+    const targetSeconds = getTargetSeconds();
 
     clearError();
 
     if (!goal) {
-        showError("Please enter a short session goal before starting.");
-        goalInput.focus();
+        showError("Please enter a session goal.");
         return;
     }
 
-    if (totalMinutes <= 0) {
-        showError("Please enter hours, minutes, or choose a quick set time.");
-        minutesInput.focus();
+    if (targetSeconds <= 0) {
+        showError("Please choose a session time.");
         return;
     }
+
+    const response = await fetch("/session/start", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken
+        },
+        body: JSON.stringify({
+            goal: goal,
+            target_seconds: targetSeconds
+        })
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+        showError(data.message || "Could not start session.");
+        return;
+    }
+
+    activeSessionId = data.session_id;
+    activeSessionTitle = data.title || goal;
+    activeSessionStartedAt = data.started_at || new Date().toISOString();
+    controlRemainingSeconds = targetSeconds;
 
     sessionActive = true;
     sessionPaused = false;
+    autoEnding = false;
 
     lockInputs(true);
     setButtonState("pause");
-    stopBtn.classList.add("visible");
+    showSessionButtons(true);
+    startControlCountdown();
+
+    sendLiveUpdate("active", {
+        target_seconds: targetSeconds
+    });
 }
 
-function pauseSession() {
-    sessionPaused = !sessionPaused;
-    setButtonState(sessionPaused ? "resume" : "pause");
-}
-
-function stopSession() {
-    sessionActive = false;
-    sessionPaused = false;
-
-    lockInputs(false);
-    setButtonState("start");
-    stopBtn.classList.remove("visible");
+async function pauseOrResumeSession() {
     clearError();
+
+    const wasPaused = sessionPaused;
+    const frozenSeconds = controlRemainingSeconds;
+
+    const response = await fetch(wasPaused ? "/session/resume" : "/session/pause", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken
+        },
+        body: JSON.stringify({
+            session_id: activeSessionId
+        })
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+        showError(data.message || "Could not update session.");
+        return;
+    }
+
+    controlRemainingSeconds = frozenSeconds;
+    sessionPaused = !sessionPaused;
+
+    setButtonState(sessionPaused ? "resume" : "pause");
+
+    sendLiveUpdate(sessionPaused ? "paused" : "active", {
+        remaining_seconds: controlRemainingSeconds
+    });
 }
 
-quickLength.addEventListener("change", () => {
-    const total = Number(quickLength.value);
+async function endSession(type) {
+    clearError();
 
-    if (!total) return;
+    const response = await fetch("/session/end", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken
+        },
+        body: JSON.stringify({
+            session_id: activeSessionId,
+            end_type: type,
+            remaining_seconds: controlRemainingSeconds
+        })
+    });
 
-    hoursInput.value = Math.floor(total / 60);
-    minutesInput.value = total % 60;
+    const data = await response.json();
+
+    if (!data.success) {
+        showError(data.message || "Could not end session.");
+        closeConfirm();
+        autoEnding = false;
+        return;
+    }
+
+    sendLiveUpdate(type === "cancel" ? "cancelled" : "completed", {
+        result: data.result || (type === "cancel" ? "cancelled" : "completed"),
+        title: data.title || activeSessionTitle,
+        target_seconds: data.target_seconds || getTargetSeconds(),
+        actual_seconds: data.actual_seconds || 0,
+        remaining_seconds: controlRemainingSeconds
+    });
+
+    resetControlPanel();
+    closeConfirm();
+}
+
+quickLength.addEventListener("change", function () {
+    const totalMinutes = Number(quickLength.value);
+    if (!totalMinutes) return;
+
+    fillTimeInputsFromSeconds(totalMinutes * 60);
+});
+
+hoursInput.addEventListener("input", function () {
+    quickLength.value = "";
+});
+
+minutesInput.addEventListener("input", function () {
+    quickLength.value = "";
 });
 
 goalInput.addEventListener("input", updateCharCounter);
 
-startPauseBtn.addEventListener("click", () => {
+resetBtn.addEventListener("click", function () {
+    if (sessionActive) return;
+
+    goalInput.value = "";
+    hoursInput.value = "";
+    minutesInput.value = "";
+    quickLength.value = "";
+    updateCharCounter();
+    clearError();
+});
+
+startPauseBtn.addEventListener("click", function () {
     if (!sessionActive) {
         startSession();
     } else {
-        pauseSession();
+        pauseOrResumeSession();
     }
 });
 
-stopBtn.addEventListener("click", stopSession);
+cancelBtn.addEventListener("click", function () {
+    openConfirm("cancel");
+});
+
+finishBtn.addEventListener("click", function () {
+    openConfirm("finish");
+});
+
+confirmYesBtn.addEventListener("click", function () {
+    if (confirmAction === "finish") {
+        endSession("finish");
+    }
+
+    if (confirmAction === "cancel") {
+        endSession("cancel");
+    }
+});
+
+confirmNoBtn.addEventListener("click", closeConfirm);
+
+if (initialTargetSeconds > 0) {
+    fillTimeInputsFromSeconds(initialTargetSeconds);
+}
+
+if (sessionActive) {
+    lockInputs(true);
+    setButtonState(sessionPaused ? "resume" : "pause");
+    showSessionButtons(true);
+
+    controlRemainingSeconds = calculateRemainingSecondsFromStart();
+    startControlCountdown();
+
+    setTimeout(function () {
+        sendLiveUpdate(sessionPaused ? "paused" : "active", {
+            target_seconds: initialTargetSeconds,
+            remaining_seconds: controlRemainingSeconds
+        });
+    }, 200);
+} else {
+    resetControlPanel();
+}
 
 setGreeting();
 updateClock();
