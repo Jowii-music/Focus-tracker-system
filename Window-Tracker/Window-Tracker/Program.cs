@@ -10,6 +10,7 @@ using System.Text;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
+using System.ComponentModel;
 
 // MODELS
 class SessionEvent
@@ -32,6 +33,17 @@ class SessionEvent
 
     public DateTime ActivityDate { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+class Notification
+{
+    public int UserId { get; set; }
+
+    public string header { get; set; }
+
+    public string content { get; set; }
+
+    public string category { get; set; }
 }
 
 // ===================== INPUT =====================
@@ -71,6 +83,22 @@ static class State
     public static string Batch_id = Guid.NewGuid().ToString();
 
     public static double DistractionThresholdMinutes = 1;
+
+    public static SessionState Session = new SessionState();
+}
+
+public class SessionState
+{
+    public DateTime SessionStart { get; set; }
+
+    public DateTime? ProductiveStart { get; set; }
+    public DateTime? DistractedStart { get; set; }
+
+    public int DistractionCount { get; set; }
+
+    public bool FocusAchievedTriggered { get; set; }
+    public bool SustainedFocusTriggered { get; set; }
+    public bool BreakReminderTriggered { get; set; }
 }
 
 // ===================== LOGIC =====================
@@ -107,28 +135,25 @@ static class Logic
     public static void DetectNotification(string activeProcess)
     {
         var category = Helpers.GetCategory(activeProcess);
+        var now = DateTime.Now;
 
         if (category == "distracted")
         {
-            if (distractionStart == null)
+            if (State.Session.DistractedStart == null)
             {
-                distractionStart = DateTime.Now;
+                State.Session.DistractedStart = now;
             }
-            var minutes = (DateTime.Now - distractionStart.Value).TotalMinutes;
+
+            var minutes =
+                (now - State.Session.DistractedStart.Value).TotalMinutes;
 
             if (minutes > State.DistractionThresholdMinutes)
             {
-                Console.WriteLine("⚠️ Distracted for 5+ minutes");
-
-                //Later: GenerateNotification()
-
-                distractionStart = DateTime.Now;
+                Console.WriteLine("Threshold met");
             }
         }
-        else
-        {
-            distractionStart = null;
-        }
+
+
     }
 }
 

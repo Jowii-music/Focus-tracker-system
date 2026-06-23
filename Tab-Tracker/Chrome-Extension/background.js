@@ -87,7 +87,7 @@ sessions.push(session)
 
 console.log(sessions)
 
-if(sessions.length == 5){
+if(sessions.length == 10){
   sendBatch(sessions)
 
   sessions = []
