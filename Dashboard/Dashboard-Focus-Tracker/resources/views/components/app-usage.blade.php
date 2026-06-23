@@ -1,3 +1,42 @@
+@php
+    $appUsageRaw = $latestReport->app_useage_json ?? '{}';
+    $appUsageData = json_decode($appUsageRaw, true) ?? [];
+
+    arsort($appUsageData);
+
+    $topApps = array_slice($appUsageData, 0, 5, true);
+
+    $labels = [];
+    $minutes = [];
+
+    foreach ($topApps as $name => $seconds) {
+        $labels[] = $name ?: 'Unknown';
+        $minutes[] = round($seconds / 60);
+    }
+
+    $topDistracting = [];
+
+    foreach ($appUsageData as $name => $seconds) {
+        $lower = strtolower($name);
+
+        if (
+            str_contains($lower, 'youtube') ||
+            str_contains($lower, 'reddit') ||
+            str_contains($lower, 'instagram') ||
+            str_contains($lower, 'discord') ||
+            str_contains($lower, 'tiktok') ||
+            str_contains($lower, 'netflix')
+        ) {
+            $topDistracting[] = [
+                'name' => $name,
+                'minutes' => round($seconds / 60)
+            ];
+        }
+    }
+
+    $topDistracting = array_slice($topDistracting, 0, 3);
+@endphp
+
 <style>
 .app-usage-card {
     height: 100%;
@@ -33,26 +72,23 @@
     <div class="distracting-box">
         <div class="card-title">Top distracting apps</div>
 
-        <div class="distracting-row">
-            <span>YouTube</span>
-            <strong>44m</strong>
-        </div>
-
-        <div class="distracting-row">
-            <span>Reddit</span>
-            <strong>34m</strong>
-        </div>
-
-        <div class="distracting-row">
-            <span>Instagram</span>
-            <strong>4m</strong>
-        </div>
+        @forelse($topDistracting as $app)
+            <div class="distracting-row">
+                <span>{{ $app['name'] }}</span>
+                <strong>{{ $app['minutes'] }}m</strong>
+            </div>
+        @empty
+            <p class="muted">No distracting apps tracked yet.</p>
+        @endforelse
     </div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+const appUsageLabels = {!! json_encode($labels) !!};
+const appUsageMinutes = {!! json_encode($minutes) !!};
+
 const ctx = document.getElementById('appUsageChart');
 
 const gradient = ctx.getContext('2d').createLinearGradient(0, 400, 0, 0);
@@ -63,20 +99,29 @@ gradient.addColorStop(1, '#34d399');
 new Chart(ctx, {
     type: 'bar',
     data: {
-        labels: ['VS Code', 'Figma', 'Notion', 'Chrome', 'Terminal'],
+        labels: appUsageLabels,
         datasets: [{
-            data: [130, 62, 34, 28, 19],
+            data: appUsageMinutes,
             backgroundColor: gradient,
             borderRadius: 10
         }]
     },
     options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            display: false
         },
-        scales: {
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    return context.label + ': ' + context.raw + ' minutes';
+                }
+            }
+        }
+    },
+    scales: {
             y: {
                 min: 0,
                 max: 180,

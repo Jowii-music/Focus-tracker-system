@@ -27,3 +27,5 @@ Route::post('/session/start', [DashboardController::class, 'startSession']);
 Route::post('/session/pause', [DashboardController::class, 'pauseSession']);
 Route::post('/session/resume', [DashboardController::class, 'resumeSession']);
 Route::post('/session/end', [DashboardController::class, 'endSession']);
+
+Route::post('/session/focus-achieved', [DashboardController::class, 'focusAchieved']);

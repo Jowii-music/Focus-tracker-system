@@ -60,7 +60,11 @@ class DashboardController extends Controller
             'started_at' => now(),
         ]);
 
-        $this->createNotification($session, 'session_started', 'Session started.');
+        $this->createNotification(
+            $session,
+            'session_started',
+            'Your session has begun. Stay focused and make progress.'
+        );
 
         return response()->json([
             'success' => true,
@@ -98,7 +102,11 @@ class DashboardController extends Controller
             'started_at' => now(),
         ]);
 
-        $this->createNotification($session, 'session_paused', 'Session paused. Break started.');
+        $this->createNotification(
+            $session,
+            'session_paused',
+            'Your session is paused. Take a moment to recharge and return when you’re ready.'
+        );
 
         return response()->json([
             'success' => true,
@@ -134,8 +142,11 @@ class DashboardController extends Controller
             'started_at' => now(),
         ]);
 
-        $this->createNotification($session, 'session_resumed', 'Session resumed.');
-        $this->createNotification($session, 'focused', 'Back in focus.');
+        $this->createNotification(
+            $session,
+            'session_resumed',
+            'Welcome back. Stay focused for the next few minutes to rebuild your momentum.'
+        );
 
         return response()->json([
             'success' => true,
@@ -145,6 +156,13 @@ class DashboardController extends Controller
             'started_at' => $session->started_at,
         ]);
     }
+
+    public function focusAchieved(Request $request)
+{
+    return response()->json([
+        'success' => true
+    ]);
+}
 
     public function endSession(Request $request)
     {
@@ -178,7 +196,11 @@ class DashboardController extends Controller
                 'result' => 'cancelled',
             ]);
 
-            $this->createNotification($session, 'session_cancelled', 'Session cancelled.');
+            $this->createNotification(
+                $session,
+                'session_cancelled',
+                'This session was cancelled before completion and won’t be counted in your progress.'
+            );
 
             return response()->json([
                 'success' => true,
@@ -200,7 +222,11 @@ class DashboardController extends Controller
             'result' => $result,
         ]);
 
-        $this->createNotification($session, 'finished_' . $result, 'Session finished ' . $result . '.');
+        $this->createNotification(
+            $session,
+            'finished_' . $result,
+            $this->finishedMessage($result)
+        );
 
         return response()->json([
             'success' => true,
@@ -287,6 +313,17 @@ class DashboardController extends Controller
             'message' => $message,
             'created_at' => now(),
         ]);
+    }
+
+    private function finishedMessage($result)
+    {
+        return match ($result) {
+            'excellent' => 'Outstanding work! You stayed focused and completed your session with excellent results.',
+            'good' => 'Well done! You stayed on track for most of your session and kept distractions to a minimum.',
+            'okay' => 'Your session has ended. Several distractions were detected, but you still made some progress.',
+            'bad' => 'Your session was heavily affected by distractions. Try to stay on task during your next session.',
+            default => 'Your session has ended.',
+        };
     }
 
     private function calculateResult($session)

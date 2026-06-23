@@ -383,7 +383,7 @@ input[type="number"] {
 
 <script>
 const loggedInUserName = "{{ $username }}";
-const csrfToken = "{{ csrf_token() }}";
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "{{ csrf_token() }}";
 
 let sessionActive = "{{ $activeSession ? 'yes' : 'no' }}" === "yes";
 let sessionPaused = "{{ optional($activeSession)->status }}" === "paused";
@@ -394,6 +394,8 @@ let confirmAction = null;
 let controlCountdownInterval = null;
 let controlRemainingSeconds = 0;
 let autoEnding = false;
+let focusAchievedTimeout = null;
+let focusAchievedSent = false;
 
 const initialTargetSeconds = Number("{{ $activeSession->target_seconds ?? 0 }}");
 
@@ -490,6 +492,47 @@ function calculateRemainingSecondsFromStart() {
     return Math.max(0, initialTargetSeconds - elapsedSeconds);
 }
 
+function startFocusAchievedTimer() {
+    clearTimeout(focusAchievedTimeout);
+
+    if (!sessionActive || sessionPaused || focusAchievedSent) return;
+
+    focusAchievedTimeout = setTimeout(async function () {
+        alert("Focus timer fired");
+        
+        if (!sessionActive || sessionPaused || focusAchievedSent) return;
+
+        const response = await fetch("/session/focus-achieved", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken
+            },
+            body: JSON.stringify({
+                session_id: activeSessionId
+            })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) return;
+
+        focusAchievedSent = true;
+
+        sendLiveUpdate("focused", {
+            remaining_seconds: controlRemainingSeconds
+        });
+
+        if (typeof refreshLatestNotifications === "function") {
+            refreshLatestNotifications();
+        }
+   }, 10000); // 10 seconds
+}
+
+function stopFocusAchievedTimer() {
+    clearTimeout(focusAchievedTimeout);
+}
+
 function startControlCountdown() {
     clearInterval(controlCountdownInterval);
 
@@ -584,7 +627,9 @@ function resetControlPanel() {
     sessionActive = false;
     sessionPaused = false;
     autoEnding = false;
+    focusAchievedSent = false;
 
+    stopFocusAchievedTimer();
     stopControlCountdown();
     lockInputs(false);
     setButtonState("start");
@@ -634,11 +679,13 @@ async function startSession() {
     sessionActive = true;
     sessionPaused = false;
     autoEnding = false;
+    focusAchievedSent = false;
 
     lockInputs(true);
     setButtonState("pause");
     showSessionButtons(true);
     startControlCountdown();
+    startFocusAchievedTimer();
 
     sendLiveUpdate("active", {
         target_seconds: targetSeconds
@@ -672,6 +719,14 @@ async function pauseOrResumeSession() {
     controlRemainingSeconds = frozenSeconds;
     sessionPaused = !sessionPaused;
 
+    if (sessionPaused) {
+        stopFocusAchievedTimer();
+        focusAchievedSent = false;
+    } else {
+        focusAchievedSent = false;
+        startFocusAchievedTimer();
+    }
+
     setButtonState(sessionPaused ? "resume" : "pause");
 
     sendLiveUpdate(sessionPaused ? "paused" : "active", {
@@ -681,6 +736,7 @@ async function pauseOrResumeSession() {
 
 async function endSession(type) {
     clearError();
+    stopFocusAchievedTimer();
 
     const response = await fetch("/session/end", {
         method: "POST",
@@ -783,6 +839,10 @@ if (sessionActive) {
 
     controlRemainingSeconds = calculateRemainingSecondsFromStart();
     startControlCountdown();
+
+    if (!sessionPaused) {
+        startFocusAchievedTimer();
+    }
 
     setTimeout(function () {
         sendLiveUpdate(sessionPaused ? "paused" : "active", {

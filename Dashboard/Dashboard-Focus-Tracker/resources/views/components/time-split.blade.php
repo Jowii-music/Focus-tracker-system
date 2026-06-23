@@ -1,79 +1,116 @@
+@php
+    $productiveSeconds = (int) ($latestReport->productive_seconds ?? 0);
+    $distractedSeconds = (int) ($latestReport->distracted_seconds ?? 0);
+    $neutralSeconds = (int) ($latestReport->neutral_seconds ?? 0);
+
+    $sessionStatsRaw = $latestReport->session_stats_json ?? '{}';
+    $sessionStats = json_decode($sessionStatsRaw, true) ?? [];
+
+    $breakSeconds = (int) ($sessionStats['break_seconds'] ?? $sessionStats['break'] ?? 0);
+    $tooDistractedSeconds = (int) ($sessionStats['too_distracted_seconds'] ?? $sessionStats['too_distracted'] ?? 0);
+
+    $focusedMinutes = round($productiveSeconds / 60);
+    $breakMinutes = round($breakSeconds / 60);
+    $distractedMinutes = round($distractedSeconds / 60);
+    $tooDistractedMinutes = round($tooDistractedSeconds / 60);
+
+    $totalMinutes = max(1, $focusedMinutes + $breakMinutes + $distractedMinutes + $tooDistractedMinutes);
+
+    $focusedPercent = round(($focusedMinutes / $totalMinutes) * 100);
+    $breakPercent = round(($breakMinutes / $totalMinutes) * 100);
+    $distractedPercent = round(($distractedMinutes / $totalMinutes) * 100);
+    $tooDistractedPercent = round(($tooDistractedMinutes / $totalMinutes) * 100);
+
+    function formatTimeSplitMinutes($minutes) {
+        $minutes = (int) $minutes;
+
+        if ($minutes >= 60) {
+            $hours = floor($minutes / 60);
+            $mins = $minutes % 60;
+
+            return $mins > 0 ? "{$hours}h {$mins}m" : "{$hours}h";
+        }
+
+        return "{$minutes}m";
+    }
+@endphp
+
 <style>
 .time-split-card {
-        height: 100%;
-    }
+    height: 100%;
+}
 
-    .time-layout {
-        display: grid;
-        grid-template-columns: 1fr 180px;
-        gap: 24px;
-        align-items: center;
-    }   
+.time-layout {
+    display: grid;
+    grid-template-columns: 1fr 180px;
+    gap: 24px;
+    align-items: center;
+}
 
-    .time-chart-box {
-        height: 350px;
-    }
+.time-chart-box {
+    height: 350px;
+}
 
-    .time-header {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 14px;
-    }
+.time-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 14px;
+}
 
-    .time-header .card-title,
-    .time-header .tabs {
-        margin: 0;
-    }
-    
-    .status-box-legend {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        width: calc(100% - 70px);
-        margin-top: 20px;
-        margin-left: 50px;
-        margin-bottom: 0px;
-    }
+.time-header .card-title,
+.time-header .tabs {
+    margin: 0;
+}
 
-    .legend-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        text-align: center;
-        color: rgba(255,255,255,0.75);
-        font-size: 14px;
-        font-weight: 500;
-    }
+.status-box-legend {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: calc(100% - 70px);
+    margin-top: 20px;
+    margin-left: 50px;
+    margin-bottom: 0px;
+}
 
-    .legend-box {
-        width: 56px;
-        height: 18px;
-        border-radius: 5px;
-        background: transparent;
-    }
+.legend-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    color: rgba(255,255,255,0.75);
+    font-size: 14px;
+    font-weight: 500;
+}
 
-    .legend-focused {
-        border: 2px solid #34d399;
-        box-shadow: inset 0 0 10px rgba(52,211,153,0.45);
-    }
+.legend-box {
+    width: 56px;
+    height: 18px;
+    border-radius: 5px;
+    background: transparent;
+}
 
-    .legend-break {
-        border: 2px solid #60a5fa;
-        box-shadow: inset 0 0 10px rgba(96,165,250,0.45);
-    }
+.legend-focused {
+    border: 2px solid #34d399;
+    box-shadow: inset 0 0 10px rgba(52,211,153,0.45);
+}
 
-    .legend-distracted {
-        border: 2px solid #fb923c;
-        box-shadow: inset 0 0 10px rgba(251,146,60,0.45);
-    }
+.legend-break {
+    border: 2px solid #60a5fa;
+    box-shadow: inset 0 0 10px rgba(96,165,250,0.45);
+}
 
-    .legend-too {
-        border: 2px solid #f87171;
-        box-shadow: inset 0 0 10px rgba(248,113,113,0.45);
-    }
-    
+.legend-distracted {
+    border: 2px solid #fb923c;
+    box-shadow: inset 0 0 10px rgba(251,146,60,0.45);
+}
+
+.legend-too {
+    border: 2px solid #f87171;
+    box-shadow: inset 0 0 10px rgba(248,113,113,0.45);
+}
+
 .week-view {
     display: none;
     align-items: center;
@@ -177,24 +214,24 @@
             <div>
                 <div class="week-item">
                     <div class="week-label">● Productive</div>
-                    <div class="week-value green">3h 12m</div>
+                    <div class="week-value green">{{ formatTimeSplitMinutes($focusedMinutes) }}</div>
                 </div>
 
                 <div class="week-item">
                     <div class="week-label">● Break</div>
-                    <div class="week-value blue">28m</div>
+                    <div class="week-value blue">{{ formatTimeSplitMinutes($breakMinutes) }}</div>
                 </div>
             </div>
 
             <div>
                 <div class="week-item">
                     <div class="week-label">● Distracted</div>
-                    <div class="week-value yellow">36m</div>
+                    <div class="week-value yellow">{{ formatTimeSplitMinutes($distractedMinutes) }}</div>
                 </div>
 
                 <div class="week-item">
                     <div class="week-label">● Too distracted</div>
-                    <div class="week-value red">1h 18m</div>
+                    <div class="week-value red">{{ formatTimeSplitMinutes($tooDistractedMinutes) }}</div>
                 </div>
             </div>
         </div>
@@ -204,6 +241,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+const focusedPercent = {!! json_encode($focusedPercent) !!};
+const breakPercent = {!! json_encode($breakPercent) !!};
+const distractedPercent = {!! json_encode($distractedPercent) !!};
+const tooDistractedPercent = {!! json_encode($tooDistractedPercent) !!};
+
+const focusedMinutes = {!! json_encode($focusedMinutes) !!};
+const breakMinutes = {!! json_encode($breakMinutes) !!};
+const distractedMinutes = {!! json_encode($distractedMinutes) !!};
+const tooDistractedMinutes = {!! json_encode($tooDistractedMinutes) !!};
+
 const dayCanvas = document.getElementById('focusPerformanceChart');
 const dayCtx = dayCanvas.getContext('2d');
 
@@ -271,7 +318,7 @@ function createDayChart() {
             datasets: [
                 {
                     label: 'Focused',
-                    data: [58, 66, 76, null, 76, 90, 68, 50, null, null, null],
+                    data: [focusedPercent, focusedPercent, focusedPercent, null, focusedPercent, focusedPercent, focusedPercent, focusedPercent, null, null, null],
                     borderColor: '#34d399',
                     backgroundColor: makeGradient(dayCtx, 'green'),
                     fill: true,
@@ -281,7 +328,7 @@ function createDayChart() {
                 },
                 {
                     label: 'Break',
-                    data: [null, null, 76, 76, 76, null, null, null, null, null, null],
+                    data: [null, null, breakPercent, breakPercent, breakPercent, null, null, null, null, null, null],
                     borderColor: '#60a5fa',
                     backgroundColor: makeGradient(dayCtx, 'blue'),
                     fill: true,
@@ -291,7 +338,7 @@ function createDayChart() {
                 },
                 {
                     label: 'Distracted',
-                    data: [null, null, null, null, null, null, null, 50, 38, 20, null],
+                    data: [null, null, null, null, null, null, null, distractedPercent, distractedPercent, distractedPercent, null],
                     borderColor: '#fb923c',
                     backgroundColor: makeGradient(dayCtx, 'orange'),
                     fill: true,
@@ -301,7 +348,7 @@ function createDayChart() {
                 },
                 {
                     label: 'Too distracted',
-                    data: [null, null, null, null, null, null, null, null, null, 20, 10],
+                    data: [null, null, null, null, null, null, null, null, null, tooDistractedPercent, tooDistractedPercent],
                     borderColor: '#f87171',
                     backgroundColor: makeGradient(dayCtx, 'red'),
                     fill: true,
@@ -316,7 +363,21 @@ function createDayChart() {
             maintainAspectRatio: false,
             spanGaps: false,
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const minuteMap = {
+                                'Focused': focusedMinutes,
+                                'Break': breakMinutes,
+                                'Distracted': distractedMinutes,
+                                'Too distracted': tooDistractedMinutes
+                            };
+
+                            return context.dataset.label + ': ' + minuteMap[context.dataset.label] + 'm';
+                        }
+                    }
+                }
             },
             scales: {
                 y: {
@@ -347,12 +408,14 @@ function createWeekChart() {
         weekChart.destroy();
     }
 
+    const centerValue = focusedPercent + '%';
+
     weekChart = new Chart(weekCanvas, {
         type: 'doughnut',
         data: {
             labels: ['Productive', 'Break', 'Distracted', 'Too distracted'],
             datasets: [{
-                data: [63, 9, 12, 16],
+                data: [focusedPercent, breakPercent, distractedPercent, tooDistractedPercent],
                 backgroundColor: ['#34d399', '#60a5fa', '#fb923c', '#f87171'],
                 borderWidth: 0
             }]
@@ -366,7 +429,14 @@ function createWeekChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.label + ': ' + context.raw + '%';
+                            const minutes = [
+                                focusedMinutes,
+                                breakMinutes,
+                                distractedMinutes,
+                                tooDistractedMinutes
+                            ];
+
+                            return context.label + ': ' + minutes[context.dataIndex] + 'm';
                         }
                     }
                 }
@@ -382,7 +452,7 @@ function createWeekChart() {
                 ctx.fillStyle = 'white';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('63%', width / 2, height / 2);
+                ctx.fillText(centerValue, width / 2, height / 2);
                 ctx.restore();
             }
         }]

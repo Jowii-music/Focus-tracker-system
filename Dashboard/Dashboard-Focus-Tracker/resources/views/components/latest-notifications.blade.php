@@ -6,17 +6,30 @@
         ->get();
 
     function notificationBadge($type) {
-        if (str_contains($type, 'paused') || str_contains($type, 'break')) return ['Break', 'badge-blue'];
-        if (str_contains($type, 'cancelled') || str_contains($type, 'bad')) return ['Alert', 'badge-red'];
-        if (str_contains($type, 'distracted')) return ['Distracted', 'badge-orange'];
-        return ['Focus', 'badge-green'];
+        $map = [
+            'session_started' => ['Session Started', 'badge-green'],
+            'focus_achieved' => ['Focus Achieved', 'badge-green'],
+            'focus_streak' => ['Focus Streak', 'badge-green'],
+            'break_reminder' => ['Break Reminder', 'badge-blue'],
+            'session_paused' => ['Session Paused', 'badge-blue'],
+            'session_resumed' => ['Session Resumed', 'badge-green'],
+            'distracted' => ['Focus Interrupted', 'badge-orange'],
+            'too_distracted' => ['Focus Lost', 'badge-red'],
+            'finished_excellent' => ['Excellent Session', 'badge-green'],
+            'finished_good' => ['Good Session', 'badge-green'],
+            'finished_okay' => ['Okay Session', 'badge-orange'],
+            'finished_bad' => ['Bad Session', 'badge-red'],
+            'session_cancelled' => ['Session Cancelled', 'badge-red'],
+        ];
+
+        return $map[$type] ?? ['Notification', 'badge-blue'];
     }
 @endphp
 
 <style>
 .notification-row {
     display: grid;
-    grid-template-columns: 55px 100px 1fr;
+    grid-template-columns: 55px 160px 1fr;
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -30,6 +43,7 @@
     border-radius: 20px;
     font-size: 13px;
     width: fit-content;
+    white-space: nowrap;
 }
 
 .badge-red {
@@ -70,59 +84,66 @@
     </p>
 
     <br><br>
-<div id="latestNotificationsBody">
-    @forelse($latestNotifications as $notification)
-        @php
-            [$label, $badgeClass] = notificationBadge($notification->type);
-        @endphp
 
-        <div class="notification-row">
-            <span class="muted">
-                {{ \Carbon\Carbon::parse($notification->created_at)->format('H:i') }}
-            </span>
+    <div id="latestNotificationsBody">
+        @forelse($latestNotifications as $notification)
+            @php
+                [$label, $badgeClass] = notificationBadge($notification->type);
+            @endphp
 
-            <span class="badge {{ $badgeClass }}">
-                {{ $label }}
-            </span>
+            <div class="notification-row">
+                <span class="muted">
+                    {{ \Carbon\Carbon::parse($notification->created_at)->format('H:i') }}
+                </span>
 
-            <span>{{ $notification->message }}</span>
-        </div>
-    @empty
-        <p class="muted">
-            No notifications yet today.
-        </p>
-    @endforelse
+                <span class="badge {{ $badgeClass }}">
+                    {{ $label }}
+                </span>
+
+                <span>{{ $notification->message }}</span>
+            </div>
+        @empty
+            <p class="muted">
+                No notifications yet today.
+            </p>
+        @endforelse
     </div>
 
 </section>
+
 <script>
+function getNotificationMeta(type) {
+    const map = {
+        session_started: ['Session Started', 'badge-green'],
+        focus_achieved: ['Focus Achieved', 'badge-green'],
+        focus_streak: ['Focus Streak', 'badge-green'],
+        break_reminder: ['Break Reminder', 'badge-blue'],
+        session_paused: ['Session Paused', 'badge-blue'],
+        session_resumed: ['Session Resumed', 'badge-green'],
+        distracted: ['Focus Interrupted', 'badge-orange'],
+        too_distracted: ['Focus Lost', 'badge-red'],
+        finished_excellent: ['Excellent Session', 'badge-green'],
+        finished_good: ['Good Session', 'badge-green'],
+        finished_okay: ['Okay Session', 'badge-orange'],
+        finished_bad: ['Bad Session', 'badge-red'],
+        session_cancelled: ['Session Cancelled', 'badge-red']
+    };
+
+    return map[type] || ['Notification', 'badge-blue'];
+}
+
 async function refreshLatestNotifications() {
-
     const response = await fetch('/latest-notifications');
-
     const notifications = await response.json();
 
     let html = '';
 
+    if (notifications.length === 0) {
+        html = '<p class="muted">No notifications yet today.</p>';
+    }
+
     notifications.forEach(notification => {
-
-        let label = 'Focus';
-        let badge = 'badge-green';
-
-        if (notification.type.includes('paused') || notification.type.includes('break')) {
-            label = 'Break';
-            badge = 'badge-blue';
-        }
-
-        if (notification.type.includes('cancelled') || notification.type.includes('bad')) {
-            label = 'Alert';
-            badge = 'badge-red';
-        }
-
-        if (notification.type.includes('distracted')) {
-            label = 'Distracted';
-            badge = 'badge-orange';
-        }
+        const [label, badge] = getNotificationMeta(notification.type);
 
         html += `
             <div class="notification-row">

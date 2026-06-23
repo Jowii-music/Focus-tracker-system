@@ -4,7 +4,6 @@
     $sessionTitle = $activeSession?->title ?? "Today's Goal";
     $sessionStatus = $activeSession?->status ?? 'not_active';
     $targetSeconds = $activeSession?->target_seconds ?? 0;
-    $startedAt = $activeSession?->started_at ?? null;
 @endphp
 
 <style>
@@ -62,12 +61,16 @@
     box-shadow: 0 0 14px rgba(255,255,255,0.25);
 }
 
-.dot-active {
+.dot-active,
+.dot-focused,
+.dot-fully-focused {
     background: #34d399;
     box-shadow: 0 0 14px rgba(52,211,153,0.7);
+    animation: blinkDot 1.2s infinite;
 }
 
-.dot-paused {
+.dot-paused,
+.dot-back {
     background: #60a5fa;
     box-shadow: 0 0 14px rgba(96,165,250,0.7);
 }
@@ -82,9 +85,29 @@
     box-shadow: 0 0 14px rgba(248,113,113,0.7);
 }
 
+@keyframes blinkDot {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.35;
+        transform: scale(1.25);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 .status-not-active { color: rgba(255,255,255,0.65); }
-.status-active { color: #34d399; }
-.status-paused { color: #60a5fa; }
+.status-active,
+.status-focused,
+.status-fully-focused { color: #34d399; }
+.status-paused,
+.status-back { color: #60a5fa; }
 .status-completed { color: #a78bfa; }
 .status-cancelled { color: #f87171; }
 
@@ -127,7 +150,6 @@
 <script>
 let liveSessionStatus = "{{ $sessionStatus }}";
 let liveTargetSeconds = Number("{{ $targetSeconds }}");
-let liveStartedAt = "{{ $startedAt }}";
 let liveRemainingSeconds = 0;
 let resetSeconds = 20;
 let resetInterval = null;
@@ -156,7 +178,19 @@ function setLiveStatus(status, result = null) {
 
     if (status === "active") {
         liveStatusEl.classList.add("status-active");
-        liveStatusEl.innerHTML = `<span class="status-dot dot-active"></span>Focused`;
+        liveStatusEl.innerHTML = `<span class="status-dot dot-active"></span>Getting Started`;
+        return;
+    }
+
+    if (status === "focused") {
+        liveStatusEl.classList.add("status-focused");
+        liveStatusEl.innerHTML = `<span class="status-dot dot-focused"></span>Focused`;
+        return;
+    }
+
+    if (status === "fully_focused") {
+        liveStatusEl.classList.add("status-fully-focused");
+        liveStatusEl.innerHTML = `<span class="status-dot dot-fully-focused"></span>Fully Focused`;
         return;
     }
 
@@ -166,20 +200,30 @@ function setLiveStatus(status, result = null) {
         return;
     }
 
+    if (status === "back_at_it") {
+        liveStatusEl.classList.add("status-back");
+        liveStatusEl.innerHTML = `<span class="status-dot dot-back"></span>Back at It`;
+        return;
+    }
+
     if (status === "completed") {
         liveStatusEl.classList.add("status-completed");
 
-        const resultText = result
-            ? result.charAt(0).toUpperCase() + result.slice(1)
-            : "Completed";
+        const resultMap = {
+            excellent: "Session Accomplished",
+            good: "Session Completed",
+            okay: "Session Finished",
+            bad: "Session Ended",
+            completed: "Session Completed"
+        };
 
-        liveStatusEl.innerHTML = `<span class="status-dot dot-completed"></span>${resultText}`;
+        liveStatusEl.innerHTML = `<span class="status-dot dot-completed"></span>${resultMap[result] || "Session Completed"}`;
         return;
     }
 
     if (status === "cancelled") {
         liveStatusEl.classList.add("status-cancelled");
-        liveStatusEl.innerHTML = `<span class="status-dot dot-cancelled"></span>Cancelled`;
+        liveStatusEl.innerHTML = `<span class="status-dot dot-cancelled"></span>Session Cancelled`;
         return;
     }
 
@@ -190,7 +234,6 @@ function setLiveStatus(status, result = null) {
 function resetLiveSessionDisplay() {
     liveSessionStatus = "not_active";
     liveTargetSeconds = 0;
-    liveStartedAt = "";
     liveRemainingSeconds = 0;
 
     setLiveStatus("not_active");
@@ -226,7 +269,12 @@ function updateLiveTimer() {
         return;
     }
 
-    if (liveSessionStatus !== "active") {
+    if (
+        liveSessionStatus !== "active" &&
+        liveSessionStatus !== "focused" &&
+        liveSessionStatus !== "fully_focused" &&
+        liveSessionStatus !== "back_at_it"
+    ) {
         return;
     }
 
@@ -259,7 +307,13 @@ function updateLiveSession(data) {
 
     setLiveStatus(liveSessionStatus, data.result ?? null);
 
-    if (liveSessionStatus === "active" || liveSessionStatus === "paused") {
+    if (
+        liveSessionStatus === "active" ||
+        liveSessionStatus === "focused" ||
+        liveSessionStatus === "fully_focused" ||
+        liveSessionStatus === "back_at_it" ||
+        liveSessionStatus === "paused"
+    ) {
         liveRemainingSeconds = Number(data.remaining_seconds ?? liveRemainingSeconds);
         sessionTimerEl.textContent = formatLiveTime(liveRemainingSeconds);
         return;
