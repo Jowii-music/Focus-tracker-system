@@ -1,268 +1,215 @@
-// Laat in de console zien dat de extensie geladen is
 console.log("Session Tracker geladen");
 
 // ── Actieve sessie ──
-// Houdt bij welke tab/app actief is en sinds wanneer
 let currentSession = null;
 
+// ── In-memory cache (altijd sync met storage) ──
+let sessions = [];
+
 /**
- * Zet een Date object om naar formaat YYYY-MM-DD
- * Voorbeeld: 2026-05-21
+ * Init load from storage
+ */
+chrome.storage.local.get(["sessions"], (data) => {
+  sessions = data.sessions || [];
+});
+
+/**
+ * Format helpers
  */
 function formatDate(d) {
   return d.toISOString().split("T")[0];
 }
 
 /**
- * Zet een Date object om naar formaat HH:MM:SS
- * Voorbeeld: 14:32:10
+ * URL domain extractor
  */
-function formatTime(d) {
-  return d.toTimeString().split(" ")[0];
+function getDomain(rawUrl) {
+  try {
+    const url = new URL(rawUrl.startsWith("http") ? rawUrl : "https://" + rawUrl);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Bepaal de categorie van een URL
- * - "productive"  : werk, code, leren
- * - "distracting" : sociale media, entertainment
- * - "unknown"     : alle andere sites
+ * Category detection
  */
 function getCategory(url) {
-
-  // Als er geen URL is, geef onbekend terug
   if (!url) return "unknown";
 
-  // ── Productieve websites ──
-  // Werk, code, documentatie, leerplatformen, projectbeheer
   const productiveKeywords = [
-    "github", "gitlab", "bitbucket",          
-    "stackoverflow", "stackexchange",          
-    "code", "docs.", "developer.",            
-    "learn.", "coursera", "udemy", "edx",     
-    "notion", "linear", "figma",              
-    "trello", "jira", "asana", "clickup",     
-    "google.com/docs", "google.com/sheets",   
-    "office.com", "teams.microsoft",          
-    "leetcode", "codepen", "replit",          
-    "vercel", "netlify", "railway",           
-    "openai.com", "anthropic.com",           
-    "chat.openai", "claude.ai"               
+    "github", "gitlab", "bitbucket",
+    "stackoverflow", "stackexchange",
+    "code", "docs.", "developer.",
+    "learn.", "coursera", "udemy", "edx",
+    "notion", "linear", "figma",
+    "trello", "jira", "asana", "clickup",
+    "google.com/docs", "google.com/sheets",
+    "office.com", "teams.microsoft",
+    "leetcode", "codepen", "replit",
+    "vercel", "netlify", "railway",
+    "openai.com", "anthropic.com",
+    "chat.openai", "claude.ai"
   ];
 
-  // ── Afleidende websites ──
-  // Sociale media, video streaming, entertainment
   const distractingKeywords = [
-    "youtube.com", "netflix.com",            
-    "instagram.com", "facebook.com",         
-    "twitter.com", "x.com",                  
-    "tiktok.com", "twitch.tv",               
-    "snapchat.com", "pinterest.com",         
-    "reddit.com", "tumblr.com",              
-    "9gag.com", "buzzfeed.com",              
-    "discord.com"                            
+    "youtube.com", "netflix.com",
+    "instagram.com", "facebook.com",
+    "twitter.com", "x.com",
+    "tiktok.com", "twitch.tv",
+    "snapchat.com", "pinterest.com",
+    "reddit.com", "tumblr.com",
+    "9gag.com", "buzzfeed.com",
+    "discord.com"
   ];
 
-  // Controleer op productieve site
-  if (productiveKeywords.some(keyword => url.includes(keyword))) {
-    return "productive";
-  }
+  if (productiveKeywords.some(k => url.includes(k))) return "productive";
+  if (distractingKeywords.some(k => url.includes(k))) return "distracted";
 
-  // Controleer op afleidende site
-  if (distractingKeywords.some(keyword => url.includes(keyword))) {
-    return "distracted";
-  }
-
-  // Geen overeenkomst gevonden
   return "unknown";
 }
 
-let sessions =[]
-
 /**
- * Sla een sessie op in chrome.storage.local
- * Sessies worden gegroepeerd per datum
+ * SAVE SESSION → FIXED (storage + memory sync)
  */
 function saveSession(session) {
-sessions.push(session)
+  sessions.push(session);
 
-console.log(sessions)
-
-}
-
-function getDomain(rawUrl){
-  try{
-    const url = new URL(rawUrl.startsWith("http")? rawUrl: "https://" + rawUrl);
-    return url.hostname.replace(/^www\./, "")
-  }
-  catch{
-    return null
-  }
+  chrome.storage.local.set({ sessions }, () => {
+    console.log("Session saved:", session);
+  });
 }
 
 /**
- * Beëindig de huidige sessie
- * Bereken de duur en sla de sessie op
+ * END SESSION → FIXED (0s filter + cleanup)
  */
 async function endCurrentSession() {
-
-  // Stop als er geen actieve sessie loopt
   if (!currentSession) return;
 
-  console.log("Sessie beëindigen...");
-
-  // Noteer de eindtijd
   const end = new Date();
+  const duration = end - currentSession.start;
 
-  // Bouw een sessie-object op met alle relevante informatie
+  // 🔥 FIX: skip ultra short sessions (tab flicker fix)
+  if (duration < 1000) {
+    currentSession = null;
+    return;
+  }
+
   const session = {
     UserId: 1,
     BatchId: crypto.randomUUID(),
     Source: "extension",
-    WindowTitle:           currentSession.titel,
-    SiteUrl:         getDomain(currentSession.url),                             
-    Category:        currentSession.category,                           
-    StartedAt:       currentSession.start.toISOString().slice(0, 19).replace("T", " "),                  // starttijd HH:MM:SS
-    EndedAt:         end.toISOString().slice(0, 19).replace("T", " "),                                   // eindtijd HH:MM:SS
-    DurationSeconds: Math.round((end - currentSession.start) / 1000),   // duur in seconden
-    ActivityDate:            formatDate(currentSession.start),                   // datum YYYY-MM-DD
-    
+    WindowTitle: currentSession.titel,
+    SiteUrl: getDomain(currentSession.url),
+    Category: currentSession.category,
+    StartedAt: currentSession.start.toISOString().slice(0, 19).replace("T", " "),
+    EndedAt: end.toISOString().slice(0, 19).replace("T", " "),
+    DurationSeconds: Math.round(duration / 1000),
+    ActivityDate: formatDate(currentSession.start),
   };
 
-  // Sla de sessie op in lokale opslag
   saveSession(session);
+
+  currentSession = null;
 }
 
 /**
- * Start een nieuwe sessie voor de opgegeven tab
- * Slaat de starttijd op en bepaalt de categorie
+ * START SESSION
  */
 function startSession(tab) {
+  if (!tab?.url) return;
 
-  // Maak een nieuw sessie-object aan voor de actieve tab
   currentSession = {
-    titel:    tab.title,
-    url: tab.url,         
-    category: getCategory(tab.url),         
-    start:    new Date()                    
+    titel: tab.title || "Unknown",
+    url: tab.url,
+    category: getCategory(tab.url),
+    start: new Date()
   };
 
   console.log("Nieuwe sessie gestart:", currentSession);
 }
 
-/* =====================================================
-   TAB SWITCH
-   Wordt uitgevoerd wanneer de gebruiker van tab wisselt
-===================================================== */
-
+/**
+ * TAB SWITCH
+ */
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-
-  // Haal de nieuwe actieve tab op via het tab-id
   const tab = await chrome.tabs.get(activeInfo.tabId);
 
-  // Sluit de vorige sessie af
   await endCurrentSession();
-
-  // Begin een nieuwe sessie voor de nieuwe tab
   startSession(tab);
 });
 
-/* =====================================================
-   TAB UPDATED
-   Wordt uitgevoerd wanneer een tab opnieuw wordt geladen
-   of naar een andere URL navigeert
-===================================================== */
-
+/**
+ * TAB UPDATE
+ */
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete") return;
 
-  // Alleen verwerken als de pagina volledig is geladen
-  if (changeInfo.status === "complete") {
+  const active = await chrome.tabs.query({
+    active: true,
+    currentWindow: true
+  });
 
-    // Zoek de actieve tab in het huidige venster
-    const active = await chrome.tabs.query({
-      active: true,
-      currentWindow: true
-    });
-
-    // Controleer of de bijgewerkte tab dezelfde is als de actieve tab
-    if (active[0]?.id === tabId) {
-
-      // Sluit de vorige sessie af
-      await endCurrentSession();
-
-      // Start een nieuwe sessie voor de vernieuwde pagina
-      startSession(tab);
-    }
+  if (active[0]?.id === tabId) {
+    await endCurrentSession();
+    startSession(tab);
   }
 });
 
-/* =====================================================
-   INIT SESSION
-   Start direct een sessie zodra de extensie wordt geladen
-===================================================== */
+/**
+ * INIT
+ */
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const tab = tabs?.[0];
+  if (tab?.url) startSession(tab);
+});
 
-chrome.tabs.query(
-  { active: true, currentWindow: true },
-  (tabs) => {
-
-    // Eerste actieve tab bij het opstarten
-    const tab = tabs[0];
-
-    // Start meteen een sessie
-    startSession(tab);
-  }
-);
-
+/**
+ * SEND BATCH
+ */
 async function sendBatch(batch) {
+
+  console.log("Sending batch:", batch);
+
   try {
     const response = await fetch("http://localhost:3000/sessions/batch", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(batch)
     });
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
     const data = await response.json();
-    console.log("Batch sent successfully:", data);
+    console.log("Batch sent:", data);
 
     return data;
   } catch (err) {
-    console.error("Failed to send batch:", err);
+    console.error("Failed batch:", err);
   }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => { // Luister naar berichten van popup.js
+/**
+ * MESSAGE HANDLER (popup)
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "SEND_BATCH_NOW") {
 
-  if (message.action === "SEND_BATCH_NOW") { // Als het bericht aangeeft dat de batch direct moet worden verzonden
-
-    if (sessions.length === 0) {
-      sendResponse({
-        success: false,
-        message: "No sessions to send"
-      });
+    if (!sessions.length) {
+      sendResponse({ success: false, message: "No sessions" });
       return true;
     }
-
-    console.log("Manual batch send triggered:", sessions);
 
     sendBatch(sessions)
       .then(() => {
         sessions = [];
+        chrome.storage.local.set({ sessions });
 
-        sendResponse({
-          success: true,
-          message: "Batch sent manually"
-        });
+        sendResponse({ success: true, message: "Sent" });
       })
       .catch(err => {
-        sendResponse({
-          success: false,
-          message: err.message
-        });
+        sendResponse({ success: false, message: err.message });
       });
 
     return true;

@@ -6,6 +6,7 @@ document.getElementById('date-display').textContent =
   });
 
 function formatDuration(sec) {
+  if (!sec || sec <= 0) return '0s';
   if (sec >= 3600) return Math.floor(sec / 3600) + 'u ' + Math.floor((sec % 3600) / 60) + 'm';
   if (sec >= 60) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
   return sec + 's';
@@ -36,14 +37,18 @@ function getCategory(url) {
     'reddit.com','tumblr.com','9gag.com','discord.com'
   ];
 
-  if (p.some(function (k) { return url.indexOf(k) !== -1; })) return 'productive';
-  if (d.some(function (k) { return url.indexOf(k) !== -1; })) return 'distracting';
+  if (p.some(k => url.includes(k))) return 'productive';
+  if (d.some(k => url.includes(k))) return 'distracting';
+
   return 'unknown';
 }
 
+/**
+ * TAB INFO UI
+ */
 function renderTab(tab) {
-  var url = (tab && tab.url) ? tab.url : '';
-  var title = (tab && tab.title) ? tab.title : (url || 'Onbekende pagina');
+  var url = tab?.url || '';
+  var title = tab?.title || url || 'Onbekende pagina';
   var cat = getCategory(url);
 
   var card = document.getElementById('status-card');
@@ -60,55 +65,56 @@ function renderTab(tab) {
   document.getElementById('page-domain').textContent = getDomain(url);
 }
 
-function renderStorage(sessions) {
-  var today = new Date();
-
-  // FIX: locale-safe date (geen timezone bug)
-  var todayStr = today.toLocaleDateString('en-CA');
-
-  var list =
-    (sessions[todayStr] && sessions[todayStr].sessions)
-      ? sessions[todayStr].sessions
-      : [];
+/**
+ * STORAGE RENDER (FIXED FOR BACKGROUND.JS STRUCTURE)
+ */
+function renderStorage(list) {
+  list = list || [];
 
   document.getElementById('sessions-today').textContent = list.length;
 
-  // FIX: gebruik durationSeconds (GEEN startTime parsing meer)
-  var last = list.at(-1);
-  var sec = last?.durationSeconds || 0;
+  // last session duration
+  const last = list.at(-1);
+  const lastSec = last?.DurationSeconds || 0;
 
   document.getElementById('session-duration').textContent =
-    formatDuration(sec);
+    formatDuration(lastSec);
 
-  var totalSec = list.reduce(function (s, x) {
-    return s + (x.durationSeconds || 0);
+  // total time
+  const totalSec = list.reduce((sum, x) => {
+    return sum + (x.DurationSeconds || 0);
   }, 0);
 
-  var prodSec = list
-    .filter(function (x) {
-      return x.category === 'productive';
-    })
-    .reduce(function (s, x) {
-      return s + (x.durationSeconds || 0);
-    }, 0);
+  // productive time
+  const prodSec = list
+    .filter(x => x.Category === 'productive')
+    .reduce((sum, x) => sum + (x.DurationSeconds || 0), 0);
 
-  var pct = totalSec > 0 ? Math.round((prodSec / totalSec) * 100) : 0;
+  const pct = totalSec > 0
+    ? Math.round((prodSec / totalSec) * 100)
+    : 0;
 
   document.getElementById('productive-pct').textContent = pct + '%';
   document.getElementById('progress-fill').style.width = pct + '%';
 }
 
+/**
+ * INIT
+ */
 chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-  renderTab(tabs ? tabs[0] : null);
+  renderTab(tabs?.[0]);
 
-  chrome.storage.local.get({ sessionsByDate: {} }, function (data) {
-    renderStorage(data.sessionsByDate || {});
+  chrome.storage.local.get({ sessions: [] }, function (data) {
+    renderStorage(data.sessions);
   });
 });
 
+/**
+ * EXPORT BUTTON
+ */
 document.getElementById('view-all-btn').addEventListener('click', function () {
-  chrome.storage.local.get({ sessionsByDate: {} }, function (data) {
-    var json = JSON.stringify(data.sessionsByDate, null, 2);
+  chrome.storage.local.get({ sessions: [] }, function (data) {
+    var json = JSON.stringify(data.sessions, null, 2);
     var blob = new Blob([json], { type: 'application/json' });
 
     var url = URL.createObjectURL(blob);
@@ -119,6 +125,9 @@ document.getElementById('view-all-btn').addEventListener('click', function () {
   });
 });
 
+/**
+ * SEND BATCH BUTTON
+ */
 document.getElementById('sendBatchBtn').addEventListener('click', () => {
   chrome.runtime.sendMessage({ action: 'SEND_BATCH_NOW' });
 });
