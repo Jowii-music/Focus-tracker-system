@@ -26,55 +26,6 @@
     }
 @endphp
 
-<style>
-.notification-row {
-    display: grid;
-    grid-template-columns: 55px 160px 1fr;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    font-size: 14px;
-}
-
-.notification-row:last-child { border-bottom: none; }
-
-.badge {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 13px;
-    width: fit-content;
-    white-space: nowrap;
-}
-
-.badge-red {
-    background: rgba(248,113,113,0.18);
-    color: #f87171;
-}
-
-.badge-blue {
-    background: rgba(96,165,250,0.18);
-    color: #60a5fa;
-}
-
-.badge-orange {
-    background: rgba(251,146,60,0.18);
-    color: #fb923c;
-}
-
-.badge-green {
-    background: rgba(52,211,153,0.18);
-    color: #34d399;
-}
-
-.muted {
-    color: rgba(255,255,255,0.55);
-}
-
-.notification-card {
-    height: 100%;
-}
-</style>
-
 <section class="card notification-card area-notifications" id="latestNotificationsCard">
 
     <div class="card-title">Latest notifications</div>

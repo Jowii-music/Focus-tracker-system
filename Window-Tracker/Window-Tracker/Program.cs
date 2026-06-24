@@ -149,7 +149,7 @@ static class Logic
 
             if (minutes > State.DistractionThresholdMinutes)
             {
-                Console.WriteLine("Threshold met");
+                
             }
         }
 
