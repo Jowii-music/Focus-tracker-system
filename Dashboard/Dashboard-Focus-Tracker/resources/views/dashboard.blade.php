@@ -2,82 +2,13 @@
 <html>
 <head>
     <title>FocusTrack Dashboard</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            min-height: 100vh;
-            font-family: Arial, sans-serif;
-            color: white;
-            background: linear-gradient(135deg, #0F0C29, #1A1042, #302B63, #24243e);
-            overflow-x: hidden;
-        }
-
-        .page {
-            padding: 24px;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 0.9fr;
-            grid-template-areas:
-                "time daily app"
-                "stats stats app"
-                "notifications notifications app";
-            gap: 16px;
-            align-items: stretch;
-        }
-
-        .area-time { grid-area: time; }
-        .area-daily { grid-area: daily; }
-        .area-app { grid-area: app; }
-        .area-stats { grid-area: stats; }
-        .area-notifications { grid-area: notifications; }
-
-        .card {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.13);
-            border-radius: 18px;
-            padding: 20px;
-            backdrop-filter: blur(18px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.22);
-        }
-
-        .card-title {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 16px;
-            color: rgba(255,255,255,0.9);
-        }
-
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-
-        .tab {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            border: 1px solid rgba(255,255,255,0.18);
-            color: rgba(255,255,255,0.6);
-            background: transparent;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .tab.active {
-            background: linear-gradient(135deg, #a78bfa, #60a5fa);
-            color: white;
-            border: none;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/app_useage.css">
+    <link rel="stylesheet" href="/css/control_panel.css">
+    <link rel="stylesheet" href="/css/latest_notification.css">
+    <link rel="stylesheet" href="/css/nav.css">
+    <link rel="stylesheet" href="/css/stats.css">
+    <link rel="stylesheet" href="/css/time_split.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 
 <body>
