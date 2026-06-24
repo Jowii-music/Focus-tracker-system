@@ -17,7 +17,11 @@ class DashboardController extends Controller
             return redirect('/login');
         }
 
-        $reports = Report::where('userId', session('user_id'))->latest()->get();
+        $reports = Report::where('userId', session('user_id'))
+            ->whereDate('created_at', today())
+            ->latest()
+            ->get();
+
         $latestReport = $reports->first();
 
         $activeSession = FocusSession::where('user_id', session('user_id'))
