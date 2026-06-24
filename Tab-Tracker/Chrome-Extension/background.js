@@ -87,11 +87,6 @@ sessions.push(session)
 
 console.log(sessions)
 
-if(sessions.length == 5){
-  sendBatch(sessions)
-
-  sessions = []
-}
 }
 
 function getDomain(rawUrl){
@@ -124,8 +119,8 @@ async function endCurrentSession() {
     BatchId: crypto.randomUUID(),
     Source: "extension",
     WindowTitle:           currentSession.titel,
-    SiteUrl:         getDomain(currentSession.url),                              // naam van de pagina
-    Category:        currentSession.category,                           // productief / afleidend / onbekend
+    SiteUrl:         getDomain(currentSession.url),                             
+    Category:        currentSession.category,                           
     StartedAt:       currentSession.start.toISOString().slice(0, 19).replace("T", " "),                  // starttijd HH:MM:SS
     EndedAt:         end.toISOString().slice(0, 19).replace("T", " "),                                   // eindtijd HH:MM:SS
     DurationSeconds: Math.round((end - currentSession.start) / 1000),   // duur in seconden
@@ -146,9 +141,9 @@ function startSession(tab) {
   // Maak een nieuw sessie-object aan voor de actieve tab
   currentSession = {
     titel:    tab.title,
-    url: tab.url,         // paginatitel, of URL als fallback
-    category: getCategory(tab.url),         // categorie op basis van URL
-    start:    new Date()                    // starttijd van de sessie
+    url: tab.url,         
+    category: getCategory(tab.url),         
+    start:    new Date()                    
   };
 
   console.log("Nieuwe sessie gestart:", currentSession);
@@ -240,3 +235,36 @@ async function sendBatch(batch) {
   }
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => { // Luister naar berichten van popup.js
+
+  if (message.action === "SEND_BATCH_NOW") { // Als het bericht aangeeft dat de batch direct moet worden verzonden
+
+    if (sessions.length === 0) {
+      sendResponse({
+        success: false,
+        message: "No sessions to send"
+      });
+      return true;
+    }
+
+    console.log("Manual batch send triggered:", sessions);
+
+    sendBatch(sessions)
+      .then(() => {
+        sessions = [];
+
+        sendResponse({
+          success: true,
+          message: "Batch sent manually"
+        });
+      })
+      .catch(err => {
+        sendResponse({
+          success: false,
+          message: err.message
+        });
+      });
+
+    return true;
+  }
+});

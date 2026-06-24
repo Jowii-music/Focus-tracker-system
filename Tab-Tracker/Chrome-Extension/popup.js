@@ -1,17 +1,17 @@
 document.getElementById('date-display').textContent =
   new Date().toLocaleDateString('nl-NL', { weekday:'short', day:'numeric', month:'long' });
 
-function formatDuration(sec) {
+function formatDuration(sec) { // sec = aantal seconden
   if (sec >= 3600) return Math.floor(sec/3600) + 'u ' + Math.floor((sec%3600)/60) + 'm';
   if (sec >= 60)   return Math.floor(sec/60) + 'm ' + (sec%60) + 's';
   return sec + 's';
 }
 
-function getDomain(url) {
+function getDomain(url) { // url = volledige URL of alleen domein
   try { return new URL(url).hostname.replace('www.',''); } catch(e) { return url || '–'; }
 }
 
-function getCategory(url) {
+function getCategory(url) { // url = volledige URL of alleen domein
   if (!url) return 'unknown';
   var p = ['github','gitlab','stackoverflow','stackexchange','docs.','developer.',
            'learn.','coursera','udemy','edx','notion','linear','figma','trello','jira',
@@ -25,7 +25,7 @@ function getCategory(url) {
   return 'unknown';
 }
 
-function renderTab(tab) {
+function renderTab(tab) { // tab = object met tab-info van Chrome API
   var url   = (tab && tab.url)   ? tab.url   : '';
   var title = (tab && tab.title) ? tab.title : (url || 'Onbekende pagina');
   var cat   = getCategory(url);
@@ -39,7 +39,7 @@ function renderTab(tab) {
   document.getElementById('page-domain').textContent  = getDomain(url);
 }
 
-function renderStorage(sessions) {
+function renderStorage(sessions) { // sessions = object met sessies per datum
   var today    = new Date();
   var todayStr = today.toISOString().split('T')[0];
   var list     = (sessions[todayStr] && sessions[todayStr].sessions) ? sessions[todayStr].sessions : [];
@@ -79,4 +79,8 @@ document.getElementById('view-all-btn').addEventListener('click', function() {
     var blob = new Blob([json], { type: 'application/json' });
     chrome.tabs.create({ url: URL.createObjectURL(blob) });
   });
+});
+
+document.getElementById("sendBatchBtn").addEventListener("click", () => { // stuurt de batch data naar de server
+  chrome.runtime.sendMessage({ action: "SEND_BATCH_NOW" });
 });
