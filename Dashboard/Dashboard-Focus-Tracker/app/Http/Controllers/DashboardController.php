@@ -22,7 +22,7 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
-        $latestReport = $reports->first();
+        $latestReport = $reports;
 
         $activeSession = FocusSession::where('user_id', session('user_id'))
             ->whereIn('status', ['active', 'paused'])

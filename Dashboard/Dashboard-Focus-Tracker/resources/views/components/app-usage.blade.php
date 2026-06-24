@@ -1,6 +1,14 @@
-@php
-    $appUsageRaw = $latestReport->app_useage_json ?? '{}';
-    $appUsageData = json_decode($appUsageRaw, true) ?? [];
+@php 
+    $appUsageData = [];
+    $topDistracting =[];
+
+    foreach ($reports as $report) {
+        $raw = json_decode($report->app_useage_json, true) ?? [];
+
+        foreach ($raw as $name => $seconds) {
+            $appUsageData[$name] = ($appUsageData[$name] ?? 0) + $seconds;
+        }
+    }
 
     arsort($appUsageData);
 
@@ -14,18 +22,17 @@
         $minutes[] = round($seconds / 60);
     }
 
-    $topDistracting = [];
 
     foreach ($appUsageData as $name => $seconds) {
         $lower = strtolower($name);
 
         if (
-            str_contains($lower, 'youtube') ||
-            str_contains($lower, 'reddit') ||
-            str_contains($lower, 'instagram') ||
+            str_contains($lower, 'chrome') ||
+            str_contains($lower, 'msedge') ||
             str_contains($lower, 'discord') ||
-            str_contains($lower, 'tiktok') ||
-            str_contains($lower, 'netflix')
+            str_contains($lower, 'whatsapp') ||
+            str_contains($lower, 'steam') ||
+            str_contains($lower, 'spotify')
         ) {
             $topDistracting[] = [
                 'name' => $name,
