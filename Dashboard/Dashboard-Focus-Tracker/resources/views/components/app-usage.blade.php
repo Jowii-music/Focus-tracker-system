@@ -124,9 +124,9 @@ new Chart(ctx, {
     scales: {
             y: {
                 min: 0,
-                max: 180,
+                max: 60,
                 ticks: {
-                    stepSize: 20,
+                    stepSize: 10,
                     color: 'rgba(255,255,255,0.65)',
                     callback: value => value + 'm'
                 },
