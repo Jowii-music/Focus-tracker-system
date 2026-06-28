@@ -96,6 +96,8 @@ public class SessionState
 
     public int DistractionCount { get; set; }
 
+    public bool DistractionNotificationTriggered { get; set; }
+
     public bool FocusAchievedTriggered { get; set; }
     public bool SustainedFocusTriggered { get; set; }
     public bool BreakReminderTriggered { get; set; }
@@ -134,6 +136,7 @@ static class Logic
 
     public static void DetectNotification(string activeProcess)
     {
+        var app = activeProcess;
         var category = Helpers.GetCategory(activeProcess);
         var now = DateTime.Now;
 
@@ -142,14 +145,16 @@ static class Logic
             if (State.Session.DistractedStart == null)
             {
                 State.Session.DistractedStart = now;
+                State.Session.DistractionNotificationTriggered = false;
             }
 
             var minutes =
                 (now - State.Session.DistractedStart.Value).TotalMinutes;
 
-            if (minutes > State.DistractionThresholdMinutes)
+            if (minutes > State.DistractionThresholdMinutes && !State.Session.DistractionNotificationTriggered)
             {
-                
+                Helpers.GenerateNotification(app);
+                State.Session.DistractionNotificationTriggered = true;
             }
         }
 
@@ -199,6 +204,22 @@ static class Helpers
             _ => "unknown"
         };
     }
+
+    public static void GenerateNotification(string appName)
+    {
+        var notification = new Notification
+        {
+            UserId = 1,
+            header = "Distraction Alert",
+            content = $"You've been using {appName} for a while. Consider refocusing on your tasks.",
+            category = "distraction"
+        };
+        // Here you can implement the logic to send this notification to the server or display it to the user.
+        Output.SendNotificationToServer(notification);
+        Console.WriteLine($"NOTIFICATION GENERATED | {notification.header} | {notification.content}");
+
+
+    }
 }
 
 // ===================== OUTPUT =====================
@@ -241,6 +262,33 @@ static class Output
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to send batch: {ex.Message}");
+        }
+    }
+
+    public static void SendNotificationToServer(Notification notification)
+    {
+        Console.WriteLine("Sending notification to server...");
+        try
+        {
+            string json = JsonSerializer.Serialize(notification);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            Console.WriteLine($"POST http://localhost:3000/post/notifications");
+            var response = State.HttpClient.PostAsync(
+                "http://localhost:3000/post/notifications",
+                content
+            ).Result;
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Notification successfully sent to server.");
+            }
+            else
+            {
+                Console.WriteLine($"Server error: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send notification: {ex.Message}");
         }
     }
 
