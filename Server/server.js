@@ -183,21 +183,24 @@ function getDomain(rawUrl){
 }
 
 app.post("/post/notifications", async (req, res) => {
-    const userId = req.body.userId;
+    console.log(req)
+
 
     const {
+        UserId,
         header,
-        content
+        content,
+        category
     } = req.body;
 
     try {
         await db.query(
             `
-            INSERT INTO notifications
-            (userId, header, content)
-            VALUES (?, ?, ?)
+            INSERT INTO dekstop_notifications
+            (userId, header, content, category)
+            VALUES (?, ?, ?, ?)
             `,
-            [userId, header, content]
+            [UserId, header, content, category]
         );
 
         res.status(201).json({
@@ -221,7 +224,7 @@ app.get("/fetch/notifications", async (req, res) => {
         let query = `
             SELECT *
             FROM notifications
-            WHERE userId = ?
+            WHERE user_id = ?
         `;
 
         const params = [userId];
