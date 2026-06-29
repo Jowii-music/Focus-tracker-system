@@ -5,6 +5,15 @@ document.getElementById('date-display').textContent =
     month: 'long'
   });
 
+  /**
+ * LIVE UPDATE OF TAB INFO IN POPUP
+ */
+  window.addEventListener("load", () => {
+  chrome.storage.local.get({ sessions: [] }, (data) => {
+    renderStorage(data.sessions);
+  });
+});
+
 function formatDuration(sec) {
   if (!sec || sec <= 0) return '0s';
   if (sec >= 3600) return Math.floor(sec / 3600) + 'u ' + Math.floor((sec % 3600) / 60) + 'm';
@@ -131,3 +140,35 @@ document.getElementById('view-all-btn').addEventListener('click', function () {
 document.getElementById('sendBatchBtn').addEventListener('click', () => {
   chrome.runtime.sendMessage({ action: 'SEND_BATCH_NOW' });
 });
+/**
+ *  live update of storage changes (sessions) in popup
+ */
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+
+  if (changes.sessions) {
+    const sessions = changes.sessions.newValue || [];
+    renderStorage(sessions);
+  }
+});
+
+/** 
+ * live update of session duration in popup
+ */
+setInterval(() => {
+
+  chrome.runtime.sendMessage(
+    { action: "GET_CURRENT_SESSION" },
+    (response) => {
+
+      if (!response?.currentSession) return;
+
+      const start = new Date(response.currentSession.start);
+      const sec = Math.floor((Date.now() - start.getTime()) / 1000);
+
+      document.getElementById("session-duration").textContent =
+        formatDuration(sec);
+    }
+  );
+
+}, 1000);

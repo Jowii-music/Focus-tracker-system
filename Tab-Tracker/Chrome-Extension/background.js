@@ -215,3 +215,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 });
+/**
+ * MESSAGE HANDLER (popup)
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+  if (message.action === "GET_CURRENT_SESSION") {
+    sendResponse({
+      currentSession
+    });
+    return true;
+  }
+
+});
