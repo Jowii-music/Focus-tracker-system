@@ -14,13 +14,18 @@ document.getElementById('date-display').textContent =
   });
 });
 
+/**
+ * FORMAT DURATION (seconds → human readable)
+ */
 function formatDuration(sec) {
   if (!sec || sec <= 0) return '0s';
   if (sec >= 3600) return Math.floor(sec / 3600) + 'u ' + Math.floor((sec % 3600) / 60) + 'm';
   if (sec >= 60) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
   return sec + 's';
 }
-
+/**
+ * FORMAT DATE (YYYY-MM-DD)
+ */
 function getDomain(url) {
   try {
     return new URL(url).hostname.replace('www.', '');
@@ -28,7 +33,9 @@ function getDomain(url) {
     return url || '–';
   }
 }
-
+/**
+ * FORMAT DATE (YYYY-MM-DD)
+ */
 function getCategory(url) {
   if (!url) return 'unknown';
 
