@@ -14,12 +14,12 @@
         </div>
  
         <div class="slider-wrap">
-            <div class="slider-arrow left"></div>
+            <button class="slider-arrow left" id="slideLeftBtn" type="button"></button>
             <input class="time-slider" id="timeWindowSlider" type="range" min="0" max="15" value="8">
-            <div class="slider-arrow right"></div>
+            <button class="slider-arrow right" id="slideRightBtn" type="button"></button>
         </div>
  
-        <div class="slider-label" id="timeWindowLabel">08:00 → 16:00</div>
+        <div class="slider-label" id="timeWindowLabel">08:00 - 16:00</div>
  
         <div class="status-box-legend" id="dayLegend">
             <div class="legend-item">
@@ -98,6 +98,8 @@ const dayView = document.getElementById('dayView');
 const weekView = document.getElementById('weekView');
 const timeWindowSlider = document.getElementById('timeWindowSlider');
 const timeWindowLabel = document.getElementById('timeWindowLabel');
+const slideLeftBtn = document.getElementById('slideLeftBtn');
+const slideRightBtn = document.getElementById('slideRightBtn');
  
 let dayChart;
 let weekChart;
@@ -112,7 +114,7 @@ const fullDayLabels = [
 const fullFocusedData = [
     null, null, null, null, null, null,
     42, 48, 72, 78, 83, 86,
-    null, 81, 76, 62, null, null,
+    null, 86, 76, 62, null, null,
     null, null, null, null, null, null
 ];
  
@@ -126,14 +128,14 @@ const fullBreakData = [
 const fullDistractedData = [
     null, null, null, null, null, null,
     null, null, null, null, null, null,
-    null, null, null, 49, 38, 29,
+    null, null, null, 62, 38, 29,
     null, null, null, null, null, null
 ];
  
 const fullTooDistractedData = [
     null, null, null, null, null, null,
     null, null, null, null, null, null,
-    null, null, null, null, null, 24,
+    null, null, null, null, null, 29,
     16, 10, null, null, null, null
 ];
  
@@ -177,7 +179,12 @@ function formatHour(hour) {
 }
  
 function updateWindowLabel(start) {
-    timeWindowLabel.textContent = `${formatHour(start)} → ${formatHour(start + 8)}`;
+    timeWindowLabel.textContent = `${formatHour(start)} - ${formatHour(start + 8)}`;
+}
+
+function updateArrowState() {
+    slideLeftBtn.style.opacity = timeWindowSlider.value == 0 ? "0.35" : "1";
+    slideRightBtn.style.opacity = timeWindowSlider.value == 15 ? "0.35" : "1";
 }
  
 function updateDayChart(startHour) {
@@ -190,6 +197,7 @@ function updateDayChart(startHour) {
  
     dayChart.update('none');
     updateWindowLabel(startHour);
+    updateArrowState();
 }
  
 function createDayChart(startHour = 8) {
@@ -391,6 +399,20 @@ function createWeekChart() {
  
 timeWindowSlider.addEventListener('input', function () {
     createDayChart(Number(this.value));
+});
+
+slideLeftBtn.addEventListener('click', function () {
+    if (timeWindowSlider.value > 0) {
+        timeWindowSlider.value--;
+        createDayChart(Number(timeWindowSlider.value));
+    }
+});
+
+slideRightBtn.addEventListener('click', function () {
+    if (timeWindowSlider.value < 15) {
+        timeWindowSlider.value++;
+        createDayChart(Number(timeWindowSlider.value));
+    }
 });
  
 function showDayChart(button = null) {

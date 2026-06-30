@@ -217,7 +217,6 @@ function startFocusAchievedTimer() {
     if (!sessionActive || sessionPaused || focusAchievedSent) return;
 
     focusAchievedTimeout = setTimeout(async function () {
-        alert("Focus timer fired");
         
         if (!sessionActive || sessionPaused || focusAchievedSent) return;
 
