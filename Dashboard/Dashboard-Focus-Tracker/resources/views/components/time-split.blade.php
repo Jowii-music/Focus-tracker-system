@@ -148,7 +148,7 @@ function createDayChart() {
             datasets: [
                 {
                     label: 'Focused',
-                    data: [72, 78, 83, 86, null, 81, 76, 62, null, null, null, null],
+                    data: [72, 78, 83, 86, null, 86, 76, 62, null, null, null, null],
                     borderColor: '#34d399',
                     backgroundColor: makeGradient(dayCtx, 'green'),
                     fill: true,
@@ -176,7 +176,7 @@ function createDayChart() {
                 },
                 {
                     label: 'Distracted',
-                    data: [null, null, null, null, null, null, null, 49, 38, 29, null, null],
+                    data: [null, null, null, null, null, null, null, 62, 38, 29, null, null],
                     borderColor: '#fb923c',
                     backgroundColor: makeGradient(dayCtx, 'orange'),
                     fill: true,
@@ -190,7 +190,7 @@ function createDayChart() {
                 },
                 {
                     label: 'Too distracted',
-                    data: [null, null, null, null, null, null, null, null, null, 24, 16, 10],
+                    data: [null, null, null, null, null, null, null, null, null, 29, 16, 10],
                     borderColor: '#f87171',
                     backgroundColor: makeGradient(dayCtx, 'red'),
                     fill: true,

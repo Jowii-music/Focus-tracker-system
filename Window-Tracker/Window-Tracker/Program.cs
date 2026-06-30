@@ -139,6 +139,7 @@ static class Logic
         var app = activeProcess;
         var category = Helpers.GetCategory(activeProcess);
         var now = DateTime.Now;
+        double minutes = 0;
 
         if (category == "distracted")
         {
@@ -148,7 +149,7 @@ static class Logic
                 State.Session.DistractionNotificationTriggered = false;
             }
 
-            var minutes =
+             minutes =
                 (now - State.Session.DistractedStart.Value).TotalMinutes;
 
             if (minutes > State.DistractionThresholdMinutes && !State.Session.DistractionNotificationTriggered)
