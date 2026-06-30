@@ -90,7 +90,7 @@ async function endCurrentSession() {
   const end = new Date();
   const duration = end - currentSession.start;
 
-  // 🔥 FIX: skip ultra short sessions (tab flicker fix)
+  // FIX: skip ultra short sessions (tab flicker fix)
   if (duration < 1000) {
     currentSession = null;
     return;
