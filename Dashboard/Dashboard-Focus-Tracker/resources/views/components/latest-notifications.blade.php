@@ -15,7 +15,7 @@
             'session_resumed' => ['Session Resumed', 'badge-green'],
             'distracted' => ['Focus Interrupted', 'badge-orange'],
             'too_distracted' => ['Focus Lost', 'badge-red'],
-            'finished_excellent' => ['Excellent Session', 'badge-green'],
+            'finished_excellent' => ['Excellent Session', 'badge-logo'],
             'finished_good' => ['Good Session', 'badge-green'],
             'finished_okay' => ['Okay Session', 'badge-orange'],
             'finished_bad' => ['Bad Session', 'badge-red'],
@@ -48,7 +48,7 @@
                 </span>
 
                 <span class="badge {{ $badgeClass }}">
-                    {{ $label }}
+                    <span class="badge-text">{{ $label }}</span>
                 </span>
 
                 <span>{{ $notification->message }}</span>
@@ -73,7 +73,7 @@ function getNotificationMeta(type) {
         session_resumed: ['Session Resumed', 'badge-green'],
         distracted: ['Focus Interrupted', 'badge-orange'],
         too_distracted: ['Focus Lost', 'badge-red'],
-        finished_excellent: ['Excellent Session', 'badge-green'],
+        finished_excellent: ['Excellent Session', 'badge-logo'],
         finished_good: ['Good Session', 'badge-green'],
         finished_okay: ['Okay Session', 'badge-orange'],
         finished_bad: ['Bad Session', 'badge-red'],
@@ -99,7 +99,9 @@ async function refreshLatestNotifications() {
         html += `
             <div class="notification-row">
                 <span class="muted">${notification.time}</span>
-                <span class="badge ${badge}">${label}</span>
+                <span class="badge ${badge}">
+                    <span class="badge-text">${label}</span>
+                </span>
                 <span>${notification.message}</span>
             </div>
         `;
