@@ -18,7 +18,7 @@ class DashboardController extends Controller
         }
 
         $reports = Report::where('userId', session('user_id'))
-            ->whereDate('created_at', today())
+            ->whereDate('report_date', today())
             ->latest()
             ->get();
 
