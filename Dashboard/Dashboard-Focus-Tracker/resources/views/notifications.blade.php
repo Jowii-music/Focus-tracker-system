@@ -15,7 +15,7 @@
             'session_resumed' => ['Session Resumed', 'badge-green'],
             'distracted' => ['Focus Interrupted', 'badge-orange'],
             'too_distracted' => ['Focus Lost', 'badge-red'],
-            'finished_excellent' => ['Excellent Session', 'badge-green'],
+            'finished_excellent' => ['Excellent Session', 'badge-logo'],
             'finished_good' => ['Good Session', 'badge-green'],
             'finished_okay' => ['Okay Session', 'badge-orange'],
             'finished_bad' => ['Bad Session', 'badge-red'],
@@ -64,9 +64,9 @@
                             {{ \Carbon\Carbon::parse($notification->created_at)->format('H:i') }}
                         </span>
 
-                        <span class="badge {{ $badgeClass }}">
-                            {{ $label }}
-                        </span>
+                    <span class="badge {{ $badgeClass }}">
+                        <span class="badge-text">{{ $label }}</span>
+                    </span>
 
                         <span>{{ $notification->message }}</span>
                     </div>
