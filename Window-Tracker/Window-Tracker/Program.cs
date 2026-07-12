@@ -71,6 +71,7 @@ static class Input
 // ===================== STATE =====================
 static class State
 {
+    public static int UserId = 1;
     public static HttpClient HttpClient = new HttpClient();
 
     public static string LastProcess;
@@ -83,6 +84,10 @@ static class State
     public static string Batch_id = Guid.NewGuid().ToString();
 
     public static double DistractionThresholdMinutes = 1;
+
+    public static DateTime LastNotificationCheck = DateTime.Now;
+
+    public static int NotificationCheckIntervalSeconds = 10;
 
     public static SessionState Session = new SessionState();
 }
@@ -160,6 +165,36 @@ static class Logic
         }
 
 
+    }
+
+    public static async Task FetchNotifications()
+    {
+        try
+        {
+            var since = State.LastNotificationCheck.ToString("o");
+
+            var url = $"http://localhost:3000/fetch/notifications?userId={State.UserId}&since={since}";
+
+            Console.WriteLine($"Fetching notifications from: {url}");
+
+            var response = await State.HttpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Failed to fetch notifications");
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(json);
+
+            State.LastNotificationCheck = DateTime.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Notification fetch failed: {ex.Message}");
+        }
     }
 }
 
@@ -353,18 +388,29 @@ static class Control
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         Control.StartStopThread();
+
         while (State.IsRunning)
         {
             var activeProcess = Input.GetActiveProcessName();
 
+            // Track user activity
             Logic.HandleProcessChange(activeProcess);
+
+            // Check if current activity should create notifications
             Logic.DetectNotification(activeProcess);
+
+            if ((DateTime.Now - State.LastNotificationCheck).TotalSeconds >= State.NotificationCheckIntervalSeconds)
+            {
+                await Logic.FetchNotifications();
+                State.LastNotificationCheck = DateTime.Now;
+            }
 
             Thread.Sleep(1000);
         }
+
         Control.Shutdown();
     }
 }

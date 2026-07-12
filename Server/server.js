@@ -217,14 +217,14 @@ app.post("/post/notifications", async (req, res) => {
 });
 
 app.get("/fetch/notifications", async (req, res) => {
-    const userId = req.body.userId;
+    const userId = req.query.userId;
     const since = req.query.since;
 
     try {
         let query = `
             SELECT *
-            FROM notifications
-            WHERE user_id = ?
+            FROM dekstop_notifications
+            WHERE userId = ?
         `;
 
         const params = [userId];
