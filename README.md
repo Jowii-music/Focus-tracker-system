@@ -94,7 +94,8 @@ Examples:
 - HTML
 - CSS
 - JavaScript
-- Chrome Extension API
+- Node.js/Express
+- Chrome Extension
 - C#
 - REST Communication
  
@@ -109,8 +110,6 @@ Focus-Tracker-System
 ├── Server
 ├── Tab-Tracker
 ├── Window-Tracker
-├── focus_tracker.sql
-└── notifications.sql
 ```
  
 ---
